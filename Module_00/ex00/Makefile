@@ -5,20 +5,15 @@ PROGRAMMER = arduino
 
 all: hex flash
 
-hex: main.bin
-	avr-objcopy -O ihex -R .eeprom main.bin main.hex
-
-main.bin: main.o
-	avr-gcc -mmcu=$(MCU) -o main.bin main.o
-
-main.o: main.c
-	avr-gcc -mmcu=$(MCU) -Os -o main.o -c main.c
+hex:
+	avr-gcc -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os -o main.bin main.c
+	avr-objcopy -O ihex main.bin main.hex
 
 flash: main.hex
-	avrdude -c $(PROGRAMMER) -p $(MCU) -P /dev/ttyUSB0 -b $(BAUD_RATE) -U flash:w:main.hex
+	avrdude -c $(PROGRAMMER) -p $(MCU) -P /dev/ttyUSB0 -b $(BAUD_RATE) -U flash:w:main.hex:i
 
 clean:
-	rm -f *.o *.hex *.bin
+	rm -f *.hex *.bin
 
 .PHONY: all hex flash clean
 
@@ -44,5 +39,5 @@ clean:
 # -p $(MCU): Specifies the microcontroller model (e.g., "atmega328p").
 # -P /dev/ttyUSB0: Specifies the serial port for communication with the programmer.
 # -b $(BAUD_RATE): Sets the baud rate for serial communication (e.g., 115200).
-# -U flash:w:main.hex: Updates the flash memory with the contents of main.hex.
+# -U flash:w:main.hex:i Updates the flash memory with the contents of main.hex.
 

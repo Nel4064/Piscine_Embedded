@@ -5,10 +5,11 @@
 
 int main()
 {
-	DDRB |= (1 << DDB0); // Set PB0 as output (DDB0 = 1)
-	PORTB |= (1 << PORTB0);  // Set PB0 high (turn LED on)
+	DDRB = DDRB | (1 << DDB0); // Set PB0 as output (DDB0 = 1)
+	PORTB = PORTB | (1 << PORTB0);  // Turn on LED (PB0 = 1)
 
-	while (1) {}
+	while (1)
+	{}
 
 	return (0);
 }
@@ -29,6 +30,11 @@ int main()
 //   PORTB |= (1 << PORTB0);  // Set PB0 to 5V (LED on)
 //   PORTB &= ~(1 << PORTB0); // Set PB0 to 0V (LED off)
 
+// --- Examples ---
+// p.88 of 653 (14.2.4) => Cf. Examples for setting DDRx and PORTx
+// DDRB &= ~(1 << DDB0);  // Clear the bit (set to 0)
+// DDRB |= (1 << DDB0);   // Set the bit (set to 1)
+
 
 // Microcontrollers-ATmega328P_Datasheet.pdf
 // p.85 of 653 (14.2.1)
@@ -43,7 +49,8 @@ int main()
 // Port Data Register - PORTx
 // PORTB = 1 => 5V / 0 => 0v
 // PORTB0 => corresponds to PORTB0
-
+// p.100 of 653 (14.14)
+// Bit vs. Byte construction of PORTB and DDRB
 // p.88 of 653 (14.2.4) => Cf. Examples for setting DDRx and PORTx
 // DDRB &= ~(1 << DDB0);  // Clear the bit (set to 0)
 // DDRB |= (1 << DDB0);   // Set the bit (set to 1)
@@ -65,7 +72,7 @@ int main()
 // #define DDRB _SFR_IO8(0x04)
 // #define DDB0 0
 // #define DDB1 1
-// #define DDB2 2
+// #define DDB2 2+
 // #define DDB3 3
 // #define DDB4 4
 // #define DDB5 5

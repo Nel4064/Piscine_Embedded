@@ -2,31 +2,19 @@
 
 int main()
 {
-	// Configure PB0 (LED D1) as output
-	DDRB |= (1 << DDB0);  // Set DDB0 to 1 (PB0 as output)
-
-	// Configure PD2 (SW1) as input
-	DDRD &= ~(1 << DDD2);  // Set DDD2 to 0 (PD2 as input)
-
-	// Enable internal pull-up resistor on PD2
-	PORTD |= (1 << PORTD2);  // Set PORTD2 to 1 (enable pull-up)
+	DDRB |= (1 << DDB0);  // Set DDB0 to 1 (PB0 (i.e. LED D1) as output)
+	DDRD &= ~(1 << DDD2);  // Set DDD2 to 0 (PD2 (i.e. switch SW1) as input)
+	PORTD |= (1 << PORTD2);  // Set PORTD2 to 1 (enable pull-up resistor)
 
 	while (1)
 	{
-		// Check if PD2 is low (button pressed)
-		if (!(PIND & (1 << PIND2)))
-		{
-			// Turn on LED (PB0 = 1)
-			PORTB |= (1 << PORTB0);
-		}
+		if (!(PIND & (1 << PIND2))) // Check if PD2 is low (button pressed)
+			PORTB |= (1 << PORTB0); // Turn on LED (PB0 = 1)
 		else
-		{
-			// Turn off LED (PB0 = 0)
-			PORTB &= ~(1 << PORTB0);
-		}
+			PORTB &= ~(1 << PORTB0); // Turn off LED (PB0 = 0)
 	}
 
-	return 0;
+	return (0);
 }
 
 // Microcontrollers-ATmega328P_Datasheet.pdf
@@ -56,4 +44,19 @@ int main()
 // Example:
 //   if (PINB & (1 << PINB0))  // Check if PB0 is high
 //   if (!(PIND & (1 << PIND2))) // Check if PD2 is low (button pressed)
+
+// Internal pull-up resistor (Rpu)
+// p.323 of 653 (Table 30-1)
+// I/O Pin Pull-up Resistor 20k to 50k Ohm
+
+// Electrical schematic for Rpu
+// p. 84 of 653 (Figure 14-1)
+// https://learn.sparkfun.com/tutorials/pull-up-resistors/all
+
+// PD2 (switch SW1) pull-up resistor
+// 42 PCB Schematic => 10kOhm
+
+// Electrical schematic for PD2 (switch SW1) pull-up resistor
+// 42 PCB Schematic
+// https://learn.sparkfun.com/tutorials/pull-up-resistors/all
 

@@ -2,35 +2,44 @@
 #include <util/delay.h>
 
 int main()
-{
-	// Configure PB0 (LED D1) as output
-	DDRB |= (1 << DDB0);
+{	
+	DDRB |= (1 << DDB0); // Set PB0 (LED D1) as OUTPUT
 
-	// Configure PD2 (SW1) as input
-	DDRD &= ~(1 << DDD2);
+	DDRD &= ~(1 << DDD2); // Set PD2 (SW1) as INPUT
 
-	// Enable internal pull-up resistor on PD2
-	PORTD |= (1 << PORTD2);
+	PORTD |= (1 << PORTD2); // Enable internal pull-up resistor for PD2
 
-	// Variable to track the previous button state
-	uint8_t prev_status = 1;  // Initially, button is not pressed (due to pull-up)
+	uint8_t prev_status = 1;  // pull-up state at start-up (not pressed)
+	uint8_t toggle_no_bounce = 0;
 
 	while (1)
 	{
-		// Read the current button state
 		uint8_t is_button_pressed = !(PIND & (1 << PIND2));
 
-		// Check for a transition from released (1) to pressed (0)
-		if (prev_status && !is_button_pressed)
+		// On button pressed
+		if (prev_status && !is_button_pressed && !toggle_no_bounce)
 		{
-			// Toggle the LED state
-			PORTB ^= (1 << PORTB0);
-			//_delay_ms(5);  // Debounce delay
+			PORTB ^= (1 << PORTB0); // Toggle the LED state
+			toggle_no_bounce = 1;
 		}
 
-		// Update the previous button state
+		// On button released
+		if (prev_status = is_button_pressed)
+			toggle_no_bounce = 0;
+
 		prev_status = is_button_pressed;
+
+		_delay_ms(20);
 	}
+
+	// // Whithout debouncing
+	// while (1)
+	// {
+	// 	uint8_t is_button_pressed = !(PIND & (1 << PIND2));
+	// 	if (prev_status && !is_button_pressed)
+	// 		PORTB ^= (1 << PORTB0);
+	// 	prev_status = is_button_pressed;
+	// }
 
 	return 0;
 }
