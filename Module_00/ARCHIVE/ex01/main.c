@@ -5,8 +5,8 @@
 
 int main()
 {
-	DDRB = DDRB | (1 << DDB0); // PB0/D1 = OUTPUT
-	PORTB = PORTB | (1 << PORTB0); // LED on / PB0 = 1
+	DDRB = DDRB | (1 << DDB0); // Set PB0 as output (DDB0 = 1)
+	PORTB = PORTB | (1 << PORTB0);  // Turn on LED (PB0 = 1)
 
 	while (1)
 	{}

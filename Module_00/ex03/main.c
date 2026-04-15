@@ -2,44 +2,30 @@
 #include <util/delay.h>
 
 int main()
-{	
-	DDRB |= (1 << DDB0); // Set PB0 (LED D1) as OUTPUT
+{
+	DDRB |= (1 << DDB0); // PB0/D1 = OUTPUT
+	DDRD &= ~(1 << DDD2); // PD2/SW1 = INPUT
+	PORTD |= (1 << PORTD2); // PD2/SW1 = Enable internal pull-up resistor (Rpu)
 
-	DDRD &= ~(1 << DDD2); // Set PD2 (SW1) as INPUT
-
-	PORTD |= (1 << PORTD2); // Enable internal pull-up resistor for PD2
-
-	uint8_t prev_status = 1;  // pull-up state at start-up (not pressed)
-	uint8_t toggle_no_bounce = 0;
+	uint8_t was_button_pressed = 0; // 0 = not pressed, 1 = pressed
 
 	while (1)
 	{
-		uint8_t is_button_pressed = !(PIND & (1 << PIND2));
+		uint8_t is_button_pressed = !(PIND & (1 << PIND2)); // digital read
 
-		// On button pressed
-		if (prev_status && !is_button_pressed && !toggle_no_bounce)
+		if (!was_button_pressed && is_button_pressed)
 		{
-			PORTB ^= (1 << PORTB0); // Toggle the LED state
-			toggle_no_bounce = 1;
+			_delay_ms(20);
+			is_button_pressed = !(PIND & (1 << PIND2)); // re-digital read
+			if (is_button_pressed)
+				PORTB ^= (1 << PORTB0);
 		}
-
-		// On button released
-		if (prev_status = is_button_pressed)
-			toggle_no_bounce = 0;
-
-		prev_status = is_button_pressed;
-
-		_delay_ms(20);
+		was_button_pressed = is_button_pressed;
 	}
 
-	// // Whithout debouncing
-	// while (1)
-	// {
-	// 	uint8_t is_button_pressed = !(PIND & (1 << PIND2));
-	// 	if (prev_status && !is_button_pressed)
-	// 		PORTB ^= (1 << PORTB0);
-	// 	prev_status = is_button_pressed;
-	// }
-
-	return 0;
+	return (0);
 }
+
+// How To Implement Switch Debounce | Switch Bounce Explained
+// https://www.picotech.com/library/articles/blog/what-is-switch-bounce-how-to-implement-debounce
+// => Debounce = wait and recheck after a few ms

@@ -2,16 +2,16 @@
 
 int main()
 {
-	DDRB |= (1 << DDB0); // PB0/D1 = OUTPUT
-	DDRD &= ~(1 << DDD2); // PD2/SW1 = INPUT
-	PORTD |= (1 << PORTD2); // PD2/SW1 = Enable internal pull-up resistor (Rpu)
+	DDRB |= (1 << DDB0);  // Set DDB0 to 1 (PB0 (i.e. LED D1) as output)
+	DDRD &= ~(1 << DDD2);  // Set DDD2 to 0 (PD2 (i.e. switch SW1) as input)
+	PORTD |= (1 << PORTD2);  // Set PORTD2 to 1 (enable pull-up resistor)
 
 	while (1)
 	{
-		if (!(PIND & (1 << PIND2))) // Check pin PIND2
-			PORTB |= (1 << PORTB0); // LED on / PB0 = 1
+		if (!(PIND & (1 << PIND2))) // Check if PD2 is low (button pressed)
+			PORTB |= (1 << PORTB0); // Turn on LED (PB0 = 1)
 		else
-			PORTB &= ~(1 << PORTB0); // LED off / PB0 = 0
+			PORTB &= ~(1 << PORTB0); // Turn off LED (PB0 = 0)
 	}
 
 	return (0);
