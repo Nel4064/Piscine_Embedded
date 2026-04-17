@@ -6,7 +6,7 @@ PROGRAMMER = arduino
 all: hex flash
 
 hex:
-	avr-gcc -mmcu=$(MCU) -DF_CPU=$(F_CPU) -o main.bin main.c
+	avr-gcc -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os -o main.bin main.c
 	avr-objcopy -O ihex main.bin main.hex
 
 flash: main.hex

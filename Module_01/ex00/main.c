@@ -22,8 +22,6 @@ int main()
 			count = 0;
 		}
 	}
-
-	return (0);
 }
 
 // ASM code with no -O optimisation at compile

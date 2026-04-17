@@ -9,8 +9,8 @@ hex:
 	avr-gcc -Wall -Wextra -Werror -mmcu=$(MCU) -DF_CPU=$(F_CPU) -o main.bin main.c
 	avr-objcopy -O ihex main.bin main.hex
 
-# ASM:
-# 	avr-gcc -Wall -Wextra -Werror -mmcu=$(MCU) -DF_CPU=$(F_CPU) -S -o main.s main.c
+ASM:
+	avr-gcc -Wall -Wextra -Werror -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os -S -o main.s main.c
 
 flash: main.hex
 	avrdude -c $(PROGRAMMER) -p $(MCU) -P /dev/ttyUSB0 -b $(BAUD_RATE) -U flash:w:main.hex:i

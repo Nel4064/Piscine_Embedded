@@ -8,16 +8,16 @@ int main()
 {
 	DDRB |= (1 << DDB1); // PB1/LED D2 = OUTPUT (Note PB1 : Can be set by OC1A, critical here for this implementation)
 
-	// // Enable Timer/Counter1
-	// PRR &= ~(1 << PRTIM1);  // p.54 + p.120 PRTIM1 must be written to zero to enable Timer/Counter1 module
+	// Enable Timer/Counter1
+	PRR &= ~(1 << PRTIM1);  // p.54 + p.120 PRTIM1 must be written to zero to enable Timer/Counter1 module
 	
-	// // Reset Prescaler (=> no prescaler division)
-	// GTCCR |= (1 << PSRSYNC); // p.149 When this bit is one, Timer/Counter1 and Timer/Counter0 prescaler will be Reset
-	//  						// p.147 the prescaler is not affected by the Timer/Counter’s clock select, but the prescaler will have implications for situations where a prescaled clock is used
+	// Reset Prescaler (=> no prescaler division)
+	GTCCR |= (1 << PSRSYNC); // p.149 When this bit is one, Timer/Counter1 and Timer/Counter0 prescaler will be Reset
+	 						// p.147 the prescaler is not affected by the Timer/Counter’s clock select, but the prescaler will have implications for situations where a prescaled clock is used
 
-	// // As an alternative to Prescaler Reset, set prescaler division to 1
-	// CLKPR |= (1 << CLKPCE); // p.46 CLKPCE bit must be written to logic one to enable change of the CLKPS bits
-	// CLKPR &= ~((1 << CLPKS0) | (1 << CLPKS1) | (1 << CLPKS2) | (1 << CLPKS3)) // p.47 Set Clock Division Factor = 1
+	// As an alternative to Prescaler Reset, set prescaler division to 4
+	CLKPR |= (1 << CLKPCE); // p.46 CLKPCE bit must be written to logic one to enable change of the CLKPS bits
+	CLKPR = (1 << CLKPS1) | (0 << CLKPS0) | (0 << CLKPS2) | (0 << CLKPS3); // p.47 Set Clock Division Factor = 4
 
 	// Set Clock Select (after Prescaler) to 101 = 1024 (Vs. 1/8/64/256)
 	TCCR1B |= (1 << CS12); // p. 143 clkI/O/1024 (From prescaler)
@@ -41,10 +41,10 @@ int main()
 	// OCR1AH = 0b00011110;
 	// OCR1AL = 0b10000011;
 
-	// // Re-start clock at 0 after all the setting above (not stricly necessary... but why not!)
-	// TCNT1 = 0; // p.122/123 Example of setting TCNT1
-	// // TCNT1H = 0b00000000;
-	// // TCNT1L = 0b00000000;
+	// Re-start clock at 0 after all the setting above (not stricly necessary... but why not!)
+	TCNT1 = 0; // p.122/123 Example of setting TCNT1
+	// TCNT1H = 0b00000000;
+	// TCNT1L = 0b00000000;
 
 	while (1)
 	{
