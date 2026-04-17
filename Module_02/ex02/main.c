@@ -1,6 +1,5 @@
 #include <avr/io.h>
 #include <util/delay.h>
-#include <avr/interrupt.h>
 
 #ifndef F_CPU
  #define F_CPU 16000000UL
@@ -19,8 +18,9 @@ void uart_init()
 	UBRR0H = (unsigned char)(ubrr>>8);
 	UBRR0L = (unsigned char)ubrr;
 
-	// Enable transmitter (DS40002061B-page 201)
+	// Enable transmitter and receiver (DS40002061B-page 201)
 	UCSR0B |= (1 << TXEN0);
+	UCSR0B |= (1 << RXEN0);
 
 	// Set USART mode to Asynchronous USART	(DS40002061B-p.202)
 	UCSR0C &= ~(1 << UMSEL01);
@@ -42,42 +42,13 @@ void uart_init()
 	UCSR0A |= (1 << U2X0); // DS40002061B-p.200/201 U2Xn bit and register and p.181 - Figure 20-2.
 }
 
-void timer1_compa_init()
-{
-	// Set Clock Select (after Prescaler) to 101 = 1024 (Vs. 1/8/64/256)
-	TCCR1B |= (1 << CS12); // p. 143 clkI/O/1024 (From prescaler)
-	TCCR1B &= ~(1 << CS11); // idem above
-	TCCR1B |= (1 << CS10); // idem above
-
-	// Set mode of operation to Toggle OC1A on Compare Match
-	// with OC1A = Timer/Counter1 Output Compare Match A Output
-	TCCR1A |= (1 << COM1A0); // p.91 + p.162 Toggle OC1A on Compare Match // overrides the normal port functionality of the I/O pin
-	TCCR1A &= ~(1 << COM1A1); // idem above
-	
-	// Set mode of operation to CTC (avoid us to reinitialise OCF1A bit in TIFR1 register)
-	// with CTC = Clear Timer on Compare match
-	TCCR1B &= ~(1 << WGM13); // idem below
-	TCCR1B |= (1 << WGM12); // p. 141 + 142 Timer/Counter Mode of Operation set to CTC 
-	TCCR1A &= ~(1 << WGM11); // idem above
-	TCCR1A &= ~(1 << WGM10); // idem above
-
-	// Set TOP value (TOP = OCR1A because CTC mode with WGM13:10 = 0b0100)) / p.121 + 122 Figure 16-1 and Definitions of TOP value and role in comparison
-	OCR1A = F_CPU/(1024/2) - 1; // = 7811 value set in OCR1AH and OCR1AL
-	// OCR1AH = 0b00011110;
-	// OCR1AL = 0b10000011;
-
-	// Set flag OCF1A as an interrupt trigger enabled for TIMER1_COMPA fonction execution
-	TIMSK1 |= (1 << OCIE1A); // p. 145 When this bit is written to one, and the I-flag in the Status Register is set (interrupts globally enabled), the
-							 // Timer/Counter1 Output Compare A Match interrupt is enabled. The corresponding Interrupt Vecto
-}
-
 // cf. Example / DS40002061B-page 186
-void uart_tx(const char c)
+void uart_tx(unsigned char c)
 {
 	/// Wait for empty transmit buffer
 	// DS40002061B-p.186 The function simply waits for the transmit buffer to be empty by checking the UDREn Flag, before loading it with
 	// new data to be transmitted.
-	while ((UCSR0A & (1 << UDRE0)) == 0)
+	while ((UCSR0A & (1<<UDRE0)) == 0)
 	{}
 
 	// Put data into buffer, sends the data
@@ -90,19 +61,37 @@ void uart_printstr(const char* str)
 		uart_tx(*str++);
 }
 
-__attribute__((signal, used))
-void TIMER1_COMPA_vect() // DS40002061B-p.74 Interrupt Vectors
+// cf. Example / DS40002061B-page 189
+unsigned char uart_rx(void)
 {
-	uart_printstr("Hello World!\r\n");
+	// Wait for data to be received
+	while ((UCSR0A & (1<<RXC0)) == 0)
+	{}
+
+	// Get and return received data from buffer
+	return (UDR0);
 }
 
-int main(void)
+int main()
 {
+	unsigned char	c;
+	uint8_t			cursor = 0;
+
 	uart_init();
-	timer1_compa_init();
-	SREG |= (1 << 7); // DS40002061B-p.20 / Global Interrupt Enable / = sei()
 	while (1)
-	{}
+	{
+		c = uart_rx();
+		if (c >= ' ')
+		{
+			uart_tx(c);
+			cursor++; // wraps to 0 after 255 (which is safe here!)
+		}
+		if (c == 127 && cursor > 0)
+		{
+			uart_printstr("\b \b"); // backspace + ' ' + backspace
+			cursor--;
+		}
+	}
 }
 
 // DS40002061B-page 180 - Figure 20-1 - USART Block Diagram
