@@ -1,0 +1,22 @@
+# AVR/Embedded C
+*.bin
+*.hex
+*.o
+*.elf
+*.s
+*.a
+*.d
+*.lst
+*.map
+*.sym
+
+# IDE/Editor specific files
+.vscode/
+.idea/
+*.swp
+*~
+
+# Miscellaneous
+*.bak
+*.tmp
+*.log
