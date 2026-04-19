@@ -8,8 +8,12 @@
 #define BAUD_RATE 115200
 
 // cf. Example / DS40002061B-page 185
-void uart_init(unsigned int ubrr)
+void uart_init(void)
 {
+	// Define UBRR0 register value
+	uint16_t ubrr;
+	ubrr = 16; // (cf. DS40002061B-p.199, table 20-7, 16MHz/115.2k/U2X0 = 1)
+
 	// Set baud rate (DS40002061B-page 204)
 	UBRR0H = (unsigned char)(ubrr>>8);
 	UBRR0L = (unsigned char)ubrr;
@@ -43,7 +47,7 @@ void uart_tx(unsigned char c)
 	/// Wait for empty transmit buffer
 	// DS40002061B-p.186 The function simply waits for the transmit buffer to be empty by checking the UDREn Flag, before loading it with
 	// new data to be transmitted.
-	while (!(UCSR0A & (1<<UDRE0)))
+	while ((UCSR0A & (1<<UDRE0)) == 0)
 	{}
 
 	// Put data into buffer, sends the data
@@ -52,9 +56,7 @@ void uart_tx(unsigned char c)
 
 int main()
 {
-	uint16_t ubrr;
-	ubrr = 16; // (cf. DS40002061B-p.199, table 20-7, 16MHz/115.2k/U2X0 = 1)
-	uart_init(ubrr);
+	uart_init();
 	while (1)
 	{
 		uart_tx('Z');

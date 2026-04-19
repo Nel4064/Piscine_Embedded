@@ -42,6 +42,13 @@ void uart_init()
 	UCSR0A |= (1 << U2X0); // DS40002061B-p.200/201 U2Xn bit and register and p.181 - Figure 20-2.
 }
 
+void uart_rx_interrupt_init()
+{
+	// Enable USART Receive Complete interrupt
+	UCSR0B |= (1 << RXCIE0); // DS40002061B-p.212 - Writing this bit to one enables interrupt on the RXCn Flag
+	// => USART Receive Complete interrupt if 1) RXCIEn = 1, 2) SREG |= (1 << 7), and 3) RXCn = 1
+}
+
 // cf. Example / DS40002061B-page 186
 void uart_tx(unsigned char c)
 {
@@ -61,30 +68,28 @@ void uart_printstr(const char* str)
 		uart_tx(*str++);
 }
 
-// cf. Example / DS40002061B-page 189
-unsigned char uart_rx(void)
+// DS40002061B-p.74 Interrupt Vectors = ISR name for USART Rx Complete
+__attribute__((signal, used)) // ISR attribute: 'signal' ensures all registers (including SREG) are saved/restored; 'used' prevents compiler optimization from removing the ISR (called by hardware)
+// void USART_RX_vect() // when using <avr/interrupt.h>
+void __vector_18(void) // if not using <avr/interrupt.h>, we should use vector_18 (for USART Rx Complete)
 {
-	// Wait for data to be received
-	while ((UCSR0A & (1<<RXC0)) == 0)
-	{}
+	char c = UDR0; // Read the value directly in the Rx register
 
-	// Get and return received data from buffer
-	return (UDR0);
+	if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) 
+		c ^= (1 << 5); // toggle bit 5 because A = 01000001 - a = 01100001
+	if (c != 127) // if != DEL
+		uart_tx(c);
+	if (c == 127) // if = DEL
+		uart_printstr("\b \b");
 }
 
 int main()
 {
-	unsigned char	c;
-
 	uart_init();
+	uart_rx_interrupt_init();
+	SREG |= (1 << 7); // DS40002061B-p.20 / Global Interrupt Enable on SREG Satatus Register / = sei() from <avr/interrupt.h>
 	while (1)
-	{
-		c = uart_rx();
-		if (c != 127) // if != DEL
-			uart_tx(c);
-		if (c == 127) // if = DEL
-			uart_printstr("\b \b");
-	}
+	{}
 }
 
 // DS40002061B-page 180 - Figure 20-1 - USART Block Diagram

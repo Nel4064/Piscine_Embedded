@@ -2,13 +2,16 @@
 #include <util/delay.h>
 
 #ifndef F_CPU
- #define F_CPU 16000000UL
+ #define F_CPU		16000000UL
 #endif
 
-#define BAUD_RATE 115200
+#ifndef BAUD_RATE
+ #define BAUD_RATE	115200
+#endif
+
 
 // cf. Example / DS40002061B-page 185
-void uart_init()
+void init_uart()
 {
 	// Define UBRR0 register value
 	uint16_t ubrr;
@@ -45,7 +48,7 @@ void uart_init()
 // cf. Example / DS40002061B-page 186
 void uart_tx(unsigned char c)
 {
-	/// Wait for empty transmit buffer
+	/// Wait for empty transmit buffer, , i.e UDRE0 flag = 1
 	// DS40002061B-p.186 The function simply waits for the transmit buffer to be empty by checking the UDREn Flag, before loading it with
 	// new data to be transmitted.
 	while ((UCSR0A & (1<<UDRE0)) == 0)
@@ -62,31 +65,12 @@ void uart_printstr(const char* str)
 }
 
 // cf. Example / DS40002061B-page 189
-unsigned char uart_rx(void)
+char uart_rx(void)
 {
-	// Wait for data to be received
+	// Wait for data to be received, i.e RXC0 flag = 1
 	while ((UCSR0A & (1<<RXC0)) == 0)
 	{}
 
 	// Get and return received data from buffer
 	return (UDR0);
 }
-
-int main()
-{
-	unsigned char	c;
-
-	uart_init();
-	while (1)
-	{
-		c = uart_rx();
-		if (c != 127) // if != DEL
-			uart_tx(c);
-		if (c == 127) // if = DEL
-			uart_printstr("\b \b");
-	}
-}
-
-// DS40002061B-page 180 - Figure 20-1 - USART Block Diagram
-// DS40002061B-page 181 - Figure 20-2 - Clock Generation Logic, Block Diagram
-

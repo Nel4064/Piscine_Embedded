@@ -1,6 +1,6 @@
 #include <avr/io.h>
 #include <util/delay.h>
-#include <avr/interrupt.h>
+// #include <avr/interrupt.h>
 
 #ifndef F_CPU
  #define F_CPU 16000000UL
@@ -69,6 +69,11 @@ void timer1_compa_init()
 	// Set flag OCF1A as an interrupt trigger enabled for TIMER1_COMPA fonction execution
 	TIMSK1 |= (1 << OCIE1A); // p. 145 When this bit is written to one, and the I-flag in the Status Register is set (interrupts globally enabled), the
 							 // Timer/Counter1 Output Compare A Match interrupt is enabled. The corresponding Interrupt Vecto
+
+	// Re-start clock at 0 after all the setting above (not stricly necessary... but why not!)
+	TCNT1 = 0; // p.122/123 Example of setting TCNT1
+	// TCNT1H = 0b00000000;
+	// TCNT1L = 0b00000000;
 }
 
 // cf. Example / DS40002061B-page 186
@@ -90,8 +95,10 @@ void uart_printstr(const char* str)
 		uart_tx(*str++);
 }
 
-__attribute__((signal, used))
-void TIMER1_COMPA_vect() // DS40002061B-p.74 Interrupt Vectors
+// DS40002061B-p.74 Interrupt Vectors = ISR name for Timer1 Compare A
+__attribute__((signal, used)) // ISR attribute: 'signal' ensures all registers (including SREG) are saved/restored; 'used' prevents compiler optimization from removing the ISR (called by hardware)
+// void TIMER1_COMPA_vect() // when using <avr/interrupt.h>
+void __vector_11(void) // if not using <avr/interrupt.h>, we should use vector_11 (the vector number for Timer1 Compare A).
 {
 	uart_printstr("Hello World!\r\n");
 }
@@ -100,10 +107,21 @@ int main(void)
 {
 	uart_init();
 	timer1_compa_init();
-	SREG |= (1 << 7); // DS40002061B-p.20 / Global Interrupt Enable / = sei()
+	SREG |= (1 << 7); // DS40002061B-p.20 / Global Interrupt Enable on SREG Satatus Register / = sei() from <avr/interrupt.h>
 	while (1)
 	{}
 }
 
 // DS40002061B-page 180 - Figure 20-1 - USART Block Diagram
 // DS40002061B-page 181 - Figure 20-2 - Clock Generation Logic, Block Diagram
+
+// Interrupts and Signals in the AVR-GCC environment
+// https://ccrma.stanford.edu/courses/250a-fall-2005/docs/avr-libc-user-manual-1.2.5/group__avr__interrupts.html
+// => How to define and use Interrupt Service Routines (ISRs) in AVR-GCC, including attributes like signal.
+// => It covers ISR naming conventions, register preservation, and the role of the avr/interrupt.h library for simplified ISR declarations.
+// __attribute__((signal)) : Saves all registers (including SREG) before entering the ISR and restores them afterward.
+// __attribute__((interrupt)) : Saves only registers used in the ISR (optimized but riskier). Rarely used in AVR. More common in other architectures (e.g., ARM).
+
+
+// ISR (Interrupt Service Routine) = A function executed in response to a hardware or software interrupt.
+// => temporarly suspends the main program to handle urgent tasks (e.g., timers, UART, external events).

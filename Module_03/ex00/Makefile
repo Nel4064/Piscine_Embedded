@@ -4,8 +4,7 @@ MCU = atmega328p
 PROGRAMMER = arduino
 PORT = /dev/ttyUSB0
 
-all: hex flash screen
-# all: hex flash
+all: hex flash
 
 hex:
 	avr-gcc -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os -o main.bin main.c
@@ -13,9 +12,6 @@ hex:
 
 flash: main.hex
 	avrdude -c $(PROGRAMMER) -p $(MCU) -P $(PORT) -b $(BAUD_RATE) -U flash:w:main.hex:i
-
-screen:
-	screen $(PORT) $(BAUD_RATE)
 
 clean:
 	rm -f *.hex *.bin
