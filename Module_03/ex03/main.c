@@ -61,13 +61,13 @@ void get_and_test_str(char* str, uint8_t length)
 		uart_printstr("Max length reached! Invalid input. Press Enter to retry.\r\n");
 
 	// Consume extra characters
-	if (i == length - 1 && c != '\r')
+	if (i == length - 1)
 	{
 		while (1)
 		{
-			c = uart_rx();
 			if (c == '\r')
 				break;
+			c = uart_rx();
 		}
 	}
 
