@@ -26,7 +26,7 @@ void	timer0_interrupt_init(void)
 	TIMSK0 |= (1 << TOIE0); // p.118 Timer/Counter0, Overflow Interrupt Enable
 
 	// Set Clock Select to 0b011 = 64 (Vs. 1/8/64/256/1028)
-	TCCR0B &= ~(1 << CS02); // p.143 clkI/O
+	TCCR0B &= ~(1 << CS02); // p.117 clkI/O
 	TCCR0B |= (1 << CS01); // idem above
 	TCCR0B |= (1 << CS00); // idem above
 	// F_Overflow = F_CPU / (prescaler * (1 + TOP)) = 16,000,000 / (64 * 256) = 976.5625 Hz
@@ -50,6 +50,7 @@ void	timer1_pwm_init(void)
 	
 	// Set TOP value (TOP = ICR1) / p.121 + 122 Figure 16-1 and Definitions of TOP value and role in comparison
 	// F_PWM = F_CPU / (prescaler * (1 + TOP))
+	// TOP = F_CPU / (F_PWM * prescaler) - 1
 	ICR1 = (uint16_t)((uint32_t)F_CPU/(2000UL * 64UL)) - 1; // = 124, for F_PWM = 2kHtz
 	OCR1A = 0;
 
@@ -59,12 +60,12 @@ void	timer1_pwm_init(void)
 	TCCR1B |= (1 << CS10); // idem above
 }
 
-// DS40002061B-p.74 Interrupt Vectors = ISR name for TIMER1_OVF
+// DS40002061B-p.74 Interrupt Vectors = ISR name for TIMER0_OVF
 __attribute__((signal, used))
 void	TIMER0_OVF_vect()
 {
-	static uint16_t	duty = 0;		// Current duty cycle (0 to OCR1A)
-    static uint8_t	increasing = 1; // Flag (1: increasing, 0: decreasing)
+	static uint16_t	duty = 0;		// Current duty cycle (0 to ICR1)
+    static uint8_t	increasing = 1; // 1 = increasing, 0 = decreasing
 	static uint16_t	counter = 0;
 	const uint16_t	update_interval = 10;
 	const uint16_t	increment = 2;
@@ -72,8 +73,6 @@ void	TIMER0_OVF_vect()
 	counter++;
 	if (counter >= update_interval)
 	{
-		counter = 0;
-
 		if (increasing)
 		{
 			if (duty < ICR1)
@@ -94,12 +93,8 @@ void	TIMER0_OVF_vect()
 				duty += increment;
 			}
 		}
-
-		// Ensure duty cycle stays within bounds
-		if (duty > ICR1)
-			duty = ICR1;
-
-		OCR1A = duty; // Update the duty cycle
+		OCR1A = duty;
+		counter = 0;
 	}
 }
 

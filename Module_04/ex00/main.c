@@ -11,7 +11,7 @@ volatile uint8_t debounce_timer = 0;  // Global variable to track debounce state
 
 void	led_d1_init(void)
 {
-	DDRB |= (1 << DDB0); // p.101 Set PB0/PCINT0 (= LED_D1) as OUTPUT
+	DDRB |= (1 << DDB0); // p.101 Set PB0 (= LED_D1) as OUTPUT
 }
 
 void	switch_sw1_init(void)

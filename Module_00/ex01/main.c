@@ -72,7 +72,7 @@ int main()
 // #define DDRB _SFR_IO8(0x04)
 // #define DDB0 0
 // #define DDB1 1
-// #define DDB2 2+
+// #define DDB2 2
 // #define DDB3 3
 // #define DDB4 4
 // #define DDB5 5
