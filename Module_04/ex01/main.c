@@ -65,7 +65,7 @@ __attribute__((signal, used))
 void	TIMER0_OVF_vect()
 {
 	static uint16_t	duty = 0;		// Current duty cycle (0 to ICR1)
-    static uint8_t	increasing = 1; // 1 = increasing, 0 = decreasing
+	static uint8_t	increasing = 1; // 1 = increasing, 0 = decreasing
 	static uint16_t	counter = 0;
 	const uint16_t	update_interval = 10;
 	const uint16_t	increment = 2;

@@ -4,11 +4,11 @@
 int main(void)
 {
 	// LEDs (PB0/D1, PB1/D2, PB2/D3, PB4/D4) = OUTPUT
-	DDRB |= (1 << PB0) | (1 << PB1) | (1 << PB2) | (1 << PB4);
+	DDRB |= (1 << DDB0) | (1 << DDB1) | (1 << DDB2) | (1 << DDB4);
 
 	// Buttons (PD2/SW1, PD4/SW2) = INPUT + ENABLED
-	DDRD &= ~((1 << PD2) | (1 << PD4));
-	PORTD |= (1 << PD2) | (1 << PD4);
+	DDRD &= ~((1 << DDD2) | (1 << DDD4));
+	PORTD |= (1 << PORTD2) | (1 << PORTD4);
 
 	// 0 = not pressed, 1 = pressed
 	uint8_t	was_button_SW1_pressed = 0;
