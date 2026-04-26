@@ -6,7 +6,8 @@ PORT = /dev/ttyUSB0
 
 SRC = main.c \
 		uart.c \
-		i2c_status_msg.c
+		i2c_status_msg.c \
+		delay_us_and_ms.c
 
 OBJ = $(SRC:.c=.o)
 TARGET = main.bin

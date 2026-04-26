@@ -56,7 +56,7 @@ void uart_tx(unsigned char c)
 	UDR0 = c;
 }
 
-void uart_tx_uint10(uint16_t value)
+void uart_tx_dec_uint10(uint16_t value)
 {
 	char buffer[4]; // Max 4 digits (1024)
 
@@ -72,6 +72,12 @@ void uart_tx_uint10(uint16_t value)
 
 	for (uint8_t i = 0; i < 4; i++)
 		uart_tx(buffer[i]);
+}
+
+void uart_tx_hex(uint8_t value)
+{
+	uart_tx("0123456789abcdef"[(value & 0xF0) >> 4]);
+	uart_tx("0123456789abcdef"[(value & 0x0F) >> 0]);
 }
 
 void uart_printstr(const char* str)
