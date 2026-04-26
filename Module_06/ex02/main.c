@@ -14,6 +14,45 @@
 #define AHT20_STATUS_BUSY (1 << 7)
 #define STATUS_MSK	0xF8 // DS40002061B-p.240 (cf. TWS7..TWS3 bit positions)
 
+typedef struct s_measurement
+{
+	float	temperature;
+	float	humidity;
+}	t_measurement;
+
+t_measurement	g_measurements[3] = {0};
+uint8_t			g_measurement_index = 0;
+
+float round_to_ten(float value)
+{
+	return (float)((int)(value / 10.0 + 0.5)) * 10.0;
+}
+
+float round_to_one(float value)
+{
+	return (float)((int)(value + 0.5));
+}
+
+float round_to_tenth(float value)
+{
+	return (float)((int)(value * 10.0 + 0.5)) / 10.0;
+}
+
+void calculate_average(float *avg_temp, float *avg_humidity)
+{
+	float temp_sum = 0;
+	float hum_sum = 0;
+
+	for (uint8_t i = 0; i < 3; i++)
+	{
+		temp_sum += g_measurements[i].temperature;
+		hum_sum += g_measurements[i].humidity;
+	}
+
+	*avg_temp = temp_sum / 3;
+	*avg_humidity = hum_sum / 3;
+}
+
 void i2c_init(void)
 {
 
@@ -133,10 +172,10 @@ void i2c_read(void)
 	uint8_t	data[length];
 	uint8_t ready = 0;
 
-    while (!ready)
-    {
-        delay_ms(1);
-        i2c_start();	
+	while (!ready)
+	{
+		delay_ms(1);
+		i2c_start();	
 		i2c_send_address(AHT20_ADDR, 1);
 		// uart_printstr("I2C SLA=AHT20+R Sent\r\n");
 
@@ -158,21 +197,41 @@ void i2c_read(void)
 			// // Display feedback status after data reception
 			// uart_display_status(TWSR & STATUS_MSK);
 		}
-        i2c_stop();
+		i2c_stop();
 
-        // Check busy bit — if still busy, loop and retry
-        if (!(data[0] & AHT20_STATUS_BUSY))
-            ready = 1;
-    }
-
-	// Print the received data
-	uart_printstr("* AHT20 Received Data : ");
-	for (uint8_t i = 0; i < length; i++)
-	{
-		print_hex_value(data[i]);
-		uart_tx(' ');
+		// Check busy bit — if still busy, loop and retry
+		if (!(data[0] & AHT20_STATUS_BUSY))
+			ready = 1;
 	}
-	uart_printstr("*\r\n");
+
+	/// Process the data
+	// Extract humidity (20 bits: data[1] (8 bits) + data[2] (8 bits) + data[3] (4 bits))
+	uint32_t humidity_raw = ((uint32_t)data[1] << 12) | ((uint32_t)data[2] << 4) | ((data[3] & 0xF0) >> 4);
+	float humidity = (humidity_raw * 100.0) / 1048576.0;  // Convert to %
+
+	// Extract temperature (20 bits: data[3] (4 bits) + data[4] (8 bits) + data[5] (8 bits))
+	uint32_t temperature_raw = (((uint32_t)(data[3] & 0x0F)) << 16) | ((uint32_t)data[4] << 8) | data[5];
+	float temperature = (temperature_raw * 200.0 / 1048576.0) - 50.0;  // Convert to Celsius
+
+	// Store measurement in circular buffer of size 3
+	g_measurements[g_measurement_index].temperature = temperature;
+	g_measurements[g_measurement_index].humidity = humidity;
+	g_measurement_index = (g_measurement_index + 1) % 3;
+
+	// Calculate moving average of 3 values
+	float avg_temp, avg_humidity;
+	calculate_average(&avg_temp, &avg_humidity);
+
+	// Round to nearest tenth
+	avg_temp = round_to_one(avg_temp);
+	avg_humidity = round_to_ten(avg_humidity);
+
+	/// Display results
+	uart_printstr("Temperature: ");
+	uart_tx_dec_uint10((uint16_t)avg_temp);
+	uart_printstr(".C, Humidity: ");
+	uart_tx_dec_uint10((uint16_t)avg_humidity);
+	uart_printstr("%\r\n");
 }
 
 void aht20_init_calibration(void)

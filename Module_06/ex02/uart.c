@@ -88,7 +88,7 @@ void uart_printstr(const char* str)
 
 void uart_display_status(uint8_t status_code)
 {
-    uart_printstr("[I2C Status: ");
+	uart_printstr("[I2C Status: ");
 	uart_printstr(i2c_status_desc(status_code));
 	uart_tx(']');
 	uart_tx('\r');

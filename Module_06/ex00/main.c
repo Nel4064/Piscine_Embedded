@@ -44,7 +44,7 @@ void i2c_start(void)
 
 	// Send START condition
 	// DS40002061B-page 226 A START condition is sent by writing the following value to TWCR
-    TWCR = (1 << TWINT) | (1 << TWEN) | (1 << TWSTA); // Clear TWINT, enable TWI, and send START
+	TWCR = (1 << TWINT) | (1 << TWEN) | (1 << TWSTA); // Clear TWINT, enable TWI, and send START
 	// => Clear any previous TWI Interrupt Flag and start operation of the TWI
 	// "TWCR = (1 << TWINT) // DS40002061B-p.239 Clearing this flag starts the operation of the TWI, so all accesses to the TWI Address Register (TWAR), TWI Status Register (TWSR), and TWI Data Register (TWDR) must be complete before clearing this flag.
 	// => Send START condition

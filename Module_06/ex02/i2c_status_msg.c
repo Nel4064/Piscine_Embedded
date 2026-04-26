@@ -2,37 +2,37 @@
 
 const char *i2c_status_desc(uint8_t status_code)
 {
-    switch(status_code)
+	switch(status_code)
 	{
-        case TW_BUS_ERROR:              return "Bus Error";
-        case TW_START:                  return "START transmitted";
-        case TW_REP_START:              return "Repeated START transmitted";
-        case TW_MT_SLA_ACK:             return "MT: SLA+W, ACK";
-        case TW_MT_SLA_NACK:            return "MT: SLA+W, NACK";
-        case TW_MT_DATA_ACK:            return "MT: Data, ACK";
-        case TW_MT_DATA_NACK:           return "MT: Data, NACK";
-        case TW_MT_ARB_LOST:            return "MT: Arbitration lost";
-        case TW_MR_SLA_ACK:             return "MR: SLA+R, ACK";
-        case TW_MR_SLA_NACK:            return "MR: SLA+R, NACK";
-        case TW_MR_DATA_ACK:            return "MR: Data, ACK";
-        case TW_MR_DATA_NACK:           return "MR: Data, NACK";
-        case TW_SR_SLA_ACK:             return "SR: SLA+W, ACK";
-        case TW_SR_ARB_LOST_SLA_ACK:    return "SR: Arb lost, SLA+W, ACK";
-        case TW_SR_GCALL_ACK:           return "SR: General call, ACK";
-        case TW_SR_ARB_LOST_GCALL_ACK:  return "SR: Arb lost, gen call, ACK";
-        case TW_SR_DATA_ACK:            return "SR: Data, ACK";
-        case TW_SR_DATA_NACK:           return "SR: Data, NACK";
-        case TW_SR_GCALL_DATA_ACK:      return "SR: Gen call data, ACK";
-        case TW_SR_GCALL_DATA_NACK:     return "SR: Gen call data, NACK";
-        case TW_SR_STOP:                return "SR: STOP or repeated START";
-        case TW_ST_SLA_ACK:             return "ST: SLA+R, ACK";
-        case TW_ST_ARB_LOST_SLA_ACK:    return "ST: Arb lost, SLA+R, ACK";
-        case TW_ST_DATA_ACK:            return "ST: Data, ACK";
-        case TW_ST_DATA_NACK:           return "ST: Data, NACK";
-        case TW_ST_LAST_DATA:           return "ST: Last data, ACK";
-        case TW_NO_INFO:                return "No relevant info";
-        default:                        return "Unknown status code";
-    }
+		case TW_BUS_ERROR:              return "Bus Error";
+		case TW_START:                  return "START transmitted";
+		case TW_REP_START:              return "Repeated START transmitted";
+		case TW_MT_SLA_ACK:             return "MT: SLA+W, ACK";
+		case TW_MT_SLA_NACK:            return "MT: SLA+W, NACK";
+		case TW_MT_DATA_ACK:            return "MT: Data, ACK";
+		case TW_MT_DATA_NACK:           return "MT: Data, NACK";
+		case TW_MT_ARB_LOST:            return "MT: Arbitration lost";
+		case TW_MR_SLA_ACK:             return "MR: SLA+R, ACK";
+		case TW_MR_SLA_NACK:            return "MR: SLA+R, NACK";
+		case TW_MR_DATA_ACK:            return "MR: Data, ACK";
+		case TW_MR_DATA_NACK:           return "MR: Data, NACK";
+		case TW_SR_SLA_ACK:             return "SR: SLA+W, ACK";
+		case TW_SR_ARB_LOST_SLA_ACK:    return "SR: Arb lost, SLA+W, ACK";
+		case TW_SR_GCALL_ACK:           return "SR: General call, ACK";
+		case TW_SR_ARB_LOST_GCALL_ACK:  return "SR: Arb lost, gen call, ACK";
+		case TW_SR_DATA_ACK:            return "SR: Data, ACK";
+		case TW_SR_DATA_NACK:           return "SR: Data, NACK";
+		case TW_SR_GCALL_DATA_ACK:      return "SR: Gen call data, ACK";
+		case TW_SR_GCALL_DATA_NACK:     return "SR: Gen call data, NACK";
+		case TW_SR_STOP:                return "SR: STOP or repeated START";
+		case TW_ST_SLA_ACK:             return "ST: SLA+R, ACK";
+		case TW_ST_ARB_LOST_SLA_ACK:    return "ST: Arb lost, SLA+R, ACK";
+		case TW_ST_DATA_ACK:            return "ST: Data, ACK";
+		case TW_ST_DATA_NACK:           return "ST: Data, NACK";
+		case TW_ST_LAST_DATA:           return "ST: Last data, ACK";
+		case TW_NO_INFO:                return "No relevant info";
+		default:                        return "Unknown status code";
+	}
 
 	// static const char *const desc[256] =
 	// {

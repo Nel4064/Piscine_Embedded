@@ -133,10 +133,10 @@ void i2c_read(void)
 	uint8_t	data[length];
 	uint8_t ready = 0;
 
-    while (!ready)
-    {
-        delay_ms(1);
-        i2c_start();	
+	while (!ready)
+	{
+		delay_ms(1);
+		i2c_start();	
 		i2c_send_address(AHT20_ADDR, 1);
 		// uart_printstr("I2C SLA=AHT20+R Sent\r\n");
 
@@ -158,12 +158,12 @@ void i2c_read(void)
 			// // Display feedback status after data reception
 			// uart_display_status(TWSR & STATUS_MSK);
 		}
-        i2c_stop();
+		i2c_stop();
 
-        // Check busy bit — if still busy, loop and retry
-        if (!(data[0] & AHT20_STATUS_BUSY))
-            ready = 1;
-    }
+		// Check busy bit — if still busy, loop and retry
+		if (!(data[0] & AHT20_STATUS_BUSY))
+			ready = 1;
+	}
 
 	// Print the received data
 	uart_printstr("* AHT20 Received Data : ");
