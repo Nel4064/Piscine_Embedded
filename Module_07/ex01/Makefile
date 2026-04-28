@@ -23,11 +23,14 @@ hex: $(OBJ)
 flash: main.hex
 	avrdude -c $(PROGRAMMER) -p $(MCU) -P $(PORT) -b $(BAUD_RATE) -U flash:w:main.hex:i
 
+dump:
+	avrdude -c $(PROGRAMMER) -p $(MCU) -P $(PORT) -b $(BAUD_RATE) -U flash:r:main.dump
+
 screen:
 	screen $(PORT) $(BAUD_RATE)
 
 clean:
-	rm -f *.hex *.bin *.o
+	rm -f *.hex *.bin *.o *.dump
 
 .PHONY: all hex flash clean screen
 

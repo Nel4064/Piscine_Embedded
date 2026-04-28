@@ -39,8 +39,8 @@ uint8_t eeprom_read_byte(uint16_t address, uint8_t *data)
 	{}
 
 	// DS40002061B-p.31 Set up address register
-	EEARH = ((address >> 8) & 0x0004);
-	EEARL = (address & 0x00FF);
+	EEARH = (address & 0x0300) >> 8;
+	EEARL = (address & 0x00FF) >> 0;
 
 	// DS40002061B-p.33 Start eeprom read by writing EERE 
 	EECR |= (1 << EERE); // When the correct address is set up in the EEAR Register, the EERE bit must be written to a logic one to trigger the EEPROM read. 

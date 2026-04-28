@@ -15,7 +15,8 @@
 typedef enum e_eeprom_error_code
 {
 	EEPROM_ERROR_NONE = 0,
-	EEPROM_INVALID_ADDR
+	EEPROM_INVALID_ADDR,
+	EEPROM_DATA_ALREADY_IN
 }	t_eeprom_error_code;
 
 typedef enum e_parsing_error_code
@@ -54,6 +55,14 @@ uint8_t eeprom_write_byte(uint16_t address, uint8_t data)
 	if (address >= EEPROM_SIZE)
 		return (EEPROM_INVALID_ADDR);
 
+	// Read the current value at the address
+	uint8_t current_data;
+	eeprom_read_byte(address, &current_data);
+
+	// If the current value is the same as the new value, do not write
+	if (current_data == data)
+		return (EEPROM_DATA_ALREADY_IN);
+
 	// DS40002061B-p.31 Wait for completion of previous write
 	while(EECR & (1 << EEPE)) // The user software can poll this bit and wait for a zero before writing the next byt
 	{}
@@ -71,44 +80,12 @@ uint8_t eeprom_write_byte(uint16_t address, uint8_t data)
 	// DS40002061B-p.32 Start eeprom write by setting EEPE
 	EECR |= (1 << EEPE); // When address and data are correctly set up, the EEPE bit must be written to one to write the value into the EEPROM.
 
+	// DS40002061B-p.31 Wait for completion of write
+	while (EECR & (1 << EEPE))
+	{}
+
 	return (EEPROM_ERROR_NONE);
 }
-
-// void	eeprom_hexdump(void)
-// {
-// 	uint8_t data;
-
-// 	for (uint16_t addr = 0; addr < EEPROM_SIZE ; addr += HEXDUMP_BYTES_PER_LINE)
-// 	{
-// 		// Display EEPROM Address / dec
-// 		uart_tx_dec_uint10(addr);
-// 		uart_tx(' ');
-// 		uart_tx('-');
-// 		uart_tx(' ');
-
-// 		// Display EEPROM Data / hex
-// 		for (uint8_t i = 0; i < HEXDUMP_BYTES_PER_LINE; i++)
-// 		{
-// 			eeprom_read_byte(addr + i, &data);
-// 			uart_tx_hex(data);
-// 			uart_tx(' ');
-// 		}
-// 		uart_tx('|');
-
-// 		// Display EEPROM Data / unsigned char
-// 		for (uint8_t i = 0; i < HEXDUMP_BYTES_PER_LINE; i++)
-// 		{
-// 			eeprom_read_byte(addr + i, &data);
-// 			if (data >= ' ' && data <= 127)
-// 				uart_tx(data);
-// 			else
-// 				uart_tx('.');
-// 		}
-// 		uart_tx('|');
-// 		uart_tx('\r');
-// 		uart_tx('\n');
-// 	}
-// }
 
 void	eeprom_hexdump_with_highlight(uint16_t highlight_addr)
 {
@@ -153,7 +130,7 @@ void	eeprom_hexdump_with_highlight(uint16_t highlight_addr)
 	}
 }
 
-uint8_t	get_and_test_str(char* str, uint8_t length, uint16_t *addr, uint8_t *data)
+uint8_t	get_and_test_str(char *str, uint8_t length, uint16_t *addr, uint8_t *data)
 {
 	char	c;
 	uint8_t	i = 0;
@@ -163,6 +140,15 @@ uint8_t	get_and_test_str(char* str, uint8_t length, uint16_t *addr, uint8_t *dat
 	while (i < length - 1)
 	{
 		c = uart_rx();
+
+		if (c == 27) // 27 is the ASCII code for ESC (start of escape sequences)
+		{
+			uart_rx();
+			uart_rx();
+			continue ;
+		}
+		if (c < 32 && c != 127 && c != '\r')
+			continue ;
 		if (c == 127) // if = DEL (backspace)
 		{
 			if (i > 0)
@@ -244,6 +230,7 @@ int main(void)
 	char		addr_and_data_str[MAX_STR_LENGTH];
 	uint16_t	address;
 	uint8_t		data;
+	uint8_t     current_data;
 	uint8_t		parsing_err;
 	uint8_t		eeprom_err;
 
@@ -254,13 +241,18 @@ int main(void)
 	{
 		uart_printstr("Type address (must be 0-1023 (dec)), 'space' and data (2-digit hex) and press Enter.\r\n> ");
 		parsing_err = get_and_test_str(addr_and_data_str, MAX_STR_LENGTH, &address, &data);
-		eeprom_err = eeprom_write_byte(address, data);
-		if (eeprom_err == EEPROM_INVALID_ADDR)
-			uart_printstr("Invalid address! Address must be 0-1023 (dec).\r\n");
-		else if (parsing_err != PARSING_ERROR_NONE)
+		eeprom_err = eeprom_read_byte(address, &current_data);
+		if (parsing_err != PARSING_ERROR_NONE)
 			;
+		else if (eeprom_err == EEPROM_INVALID_ADDR)
+			uart_printstr("Invalid address! Address must be 0-1023 (dec).\r\n");
+		else if (current_data == data)
+			uart_printstr("New value = current value. No change.\r\n");
 		else
+		{
+			eeprom_err = eeprom_write_byte(address, data);
 			eeprom_hexdump_with_highlight(address);
+		}
 		uart_printstr("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++\r\n");
 		delay_ms(2);
 	}
