@@ -74,10 +74,71 @@ void uart_tx_dec_uint10(uint16_t value)
 		uart_tx(buffer[i]);
 }
 
-void uart_tx_hex(uint8_t value)
+void uart_tx_dec_uint32(uint32_t value)
+{
+	char buffer[11]; // Max 10 digits (4294967295)
+	uint8_t i = 0;
+
+	if (value == 0)
+	{
+		uart_tx('0');
+		return;
+	}
+
+	// Extract digits in reverse order
+	while (value > 0 && i < 10)
+	{
+		buffer[i++] = (value % 10) + '0';
+		value /= 10;
+	}
+
+	while (i > 0)
+		uart_tx(buffer[--i]);
+}
+
+void uart_tx_dec_int16(int16_t value)
+{
+	char buffer[7]; // Max 6 digits (including '-' for negative numbers)
+	uint8_t i = 0;
+	uint16_t abs_value;
+
+	if (value < 0)
+	{
+		uart_tx('-');
+		abs_value = -value;
+	}
+	else
+		abs_value = value;
+
+	if (abs_value == 0)
+	{
+		uart_tx('0');
+		return;
+	}
+
+	// Extract digits in reverse order
+	while (abs_value > 0 && i < 6)
+	{
+		buffer[i++] = (abs_value % 10) + '0';
+		abs_value /= 10;
+	}
+
+	while (i > 0)
+		uart_tx(buffer[--i]);
+}
+
+void uart_tx_hex_uint8(uint8_t value)
 {
 	uart_tx("0123456789abcdef"[(value & 0xF0) >> 4]);
 	uart_tx("0123456789abcdef"[(value & 0x0F) >> 0]);
+}
+
+void uart_tx_hex_uint16(uint16_t value)
+{
+	uart_tx("0123456789abcdef"[(value & 0xF000) >> 12]);
+	uart_tx("0123456789abcdef"[(value & 0x0F00) >> 8]);
+	uart_tx("0123456789abcdef"[(value & 0x00F0) >> 4]);
+	uart_tx("0123456789abcdef"[(value & 0x000F) >> 0]);
 }
 
 void uart_printstr(const char* str)

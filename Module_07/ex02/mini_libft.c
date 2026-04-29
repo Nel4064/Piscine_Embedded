@@ -24,6 +24,14 @@ void *ft_memcpy(void *dest, const void *src, uint8_t n)
 	return (dest);
 }
 
+void *ft_memset(void *s, uint8_t c, uint8_t n)
+{
+	uint8_t *ptr = (uint8_t *)s;
+	while (n-- > 0)
+		*ptr++ = (uint8_t)c;
+	return s;
+}
+
 void ft_toupper(char *str)
 {
 	while (*str)
@@ -42,17 +50,14 @@ uint8_t ft_strcmp(const char *s1, const char *s2)
 		s2++;
 	}
 
-	if (*s1 == '\0' && *s2 == '\0')
-		return (TRUE);
-
-	return (FALSE);
+	return (*s1 - *s2);
 }
 
 uint8_t ft_strlen(char *str)
 {
 	uint8_t count = 0;
 
-	while (str)
+	while (*str)
 	{
 		count++;
 		str++;

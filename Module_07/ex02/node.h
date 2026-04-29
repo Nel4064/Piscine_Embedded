@@ -6,8 +6,8 @@
 #define NUM_SLOTS			((uint8_t)4)
 #define NODE_SIZE			sizeof(t_node) // = 43 with current struct for t_node
 
-#define TRUE  				((uint8_t)0)
-#define FALSE 				((uint8_t)1)
+#define TRUE  				((uint8_t)1)
+#define FALSE 				((uint8_t)0)
 
 #define MAX_USER_STR_LENGTH		((uint8_t)50)
 
@@ -36,6 +36,15 @@
 #define	CMD_SET_TAG				((uint8_t)3)
 #define FACTORY_RESET			((uint8_t)4)
 
+// ANSI color codes
+#define COLOR_RESET				"\033[0m"
+#define COLOR_RED				"\033[31m"
+#define COLOR_GREEN				"\033[32m"
+#define COLOR_YELLOW			"\033[33m"
+#define COLOR_BLUE				"\033[34m"
+#define COLOR_PURPLE			"\033[35m"
+#define COLOR_CYAN				"\033[36m"
+
 typedef struct s_node
 {
 	uint16_t	magic_nb;		// Must equal NODE_MAGIC_NUMBER
@@ -46,6 +55,7 @@ typedef struct s_node
 }	t_node;						// = 43 bytes with current struct for t_node
 
 extern const uint16_t g_slot_addresses[NUM_SLOTS];
+extern uint16_t	g_slot_address_max;
 extern t_node	g_current_node;
 extern uint8_t	g_current_slot;
 

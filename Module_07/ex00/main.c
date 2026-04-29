@@ -78,7 +78,7 @@ int main(void)
 		for (uint8_t i = 0; i < HEXDUMP_BYTES_PER_LINE; i++)
 		{
 			eeprom_read_byte(addr + i, &data);
-			if (data >= ' ' && data <= 127)
+			if (data >= ' ' && data < 127)
 				uart_tx(data);
 			else
 				uart_tx('.');

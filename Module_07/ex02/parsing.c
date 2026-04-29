@@ -15,7 +15,7 @@ void ft_simple_strtok(char *str, char *command, char *param, uint8_t max_len)
 		if (str[space_pos] == ' ')
 		{
 			found_space = TRUE;
-			break;
+			break ;
 		}
 		space_pos++;
 	}

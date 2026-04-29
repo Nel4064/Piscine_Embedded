@@ -109,9 +109,13 @@ void	eeprom_hexdump_with_highlight(uint16_t highlight_addr)
 				uart_printstr("\033[31m");  // Start red
 				uart_tx_hex(data);
 				uart_printstr("\033[0m");  // Reset color
+				uart_tx(' ');
 			}
 			else
+			{
 				uart_tx_hex(data);
+				uart_tx(' ');
+			}
 		}
 		uart_tx('|');
 
@@ -119,7 +123,7 @@ void	eeprom_hexdump_with_highlight(uint16_t highlight_addr)
 		for (uint8_t i = 0; i < HEXDUMP_BYTES_PER_LINE; i++)
 		{
 			eeprom_read_byte(addr + i, &data);
-			if (data >= ' ' && data <= 127)
+			if (data >= ' ' && data < 127)
 				uart_tx(data);
 			else
 				uart_tx('.');

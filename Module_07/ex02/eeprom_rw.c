@@ -7,8 +7,12 @@ uint8_t eeprom_read_byte(uint16_t address, uint8_t *data)
 		return (EEPROM_INVALID_ADDR);
 
 	// DS40002061B-p.31 Wait for completion of previous write
-	while(EECR & (1 << EEPE)) // The user software can poll this bit and wait for a zero before writing the next byt
+	uint16_t timeout = 10000;
+	while ((EECR & (1 << EEPE)) && --timeout) // The user software can poll this bit and wait for a zero before writing the next byte
 	{}
+	
+	if (timeout == 0)
+		return (EEPROM_WRITE_VERIFY_FAILED);
 
 	// DS40002061B-p.31 Set up address register
 	EEARH = (address & 0x0300) >> 8;
@@ -38,8 +42,12 @@ uint8_t eeprom_write_byte(uint16_t address, uint8_t data)
 		return (EEPROM_DATA_ALREADY_IN);
 
 	// DS40002061B-p.31 Wait for completion of previous write
-	while(EECR & (1 << EEPE)) // The user software can poll this bit and wait for a zero before writing the next byt
+	uint16_t timeout = 10000;
+	while ((EECR & (1 << EEPE)) && --timeout) // The user software can poll this bit and wait for a zero before writing the next byte
 	{}
+	
+	if (timeout == 0)
+		return (EEPROM_WRITE_VERIFY_FAILED);
 
 	// DS40002061B-p.31 Set up address register
 	EEARH = (address & 0x0300) >> 8;
@@ -55,8 +63,12 @@ uint8_t eeprom_write_byte(uint16_t address, uint8_t data)
 	EECR |= (1 << EEPE); // When address and data are correctly set up, the EEPE bit must be written to one to write the value into the EEPROM.
 
 	// DS40002061B-p.31 Wait for completion of write
-	while (EECR & (1 << EEPE))
+	timeout = 10000;
+	while ((EECR & (1 << EEPE)) && --timeout)
 	{}
+
+	if (timeout == 0)
+		return (EEPROM_WRITE_VERIFY_FAILED);
 
 	return (EEPROM_ERROR_NONE);
 }
@@ -86,6 +98,21 @@ uint8_t eeprom_write_node(uint16_t address, const t_node *node)
 	t_node	current_node;
 	eeprom_read_block(address, (uint8_t *)&current_node, NODE_SIZE);
 
+	// If the current node is uninitialized, treat it as a new node
+	if (current_node.magic_nb != NODE_MAGIC_NUMBER)
+	{
+		// No need to compare or verify, just write the new node
+		eeprom_write_block(address, (uint8_t *)node, NODE_SIZE);
+
+		// Verify the write
+		t_node verify_node;
+		eeprom_read_block(address, (uint8_t *)&verify_node, NODE_SIZE);
+		if (!eeprom_node_structs_equal(node, &verify_node))
+			return (EEPROM_WRITE_VERIFY_FAILED);
+
+		return (EEPROM_ERROR_NONE);
+	}
+
 	if (eeprom_node_structs_equal(node, &current_node))
 		return (EEPROM_DATA_ALREADY_IN);
 
@@ -108,8 +135,11 @@ uint8_t eeprom_relocate_node(t_node *node)
 	{
 		uint8_t result = eeprom_write_node(g_slot_addresses[current_slot], node);
 
-		if (result == EEPROM_ERROR_NONE)
-			return (EEPROM_ERROR_NONE); 
+		if (result == EEPROM_ERROR_NONE || result == EEPROM_DATA_ALREADY_IN)
+		{
+			g_current_slot = current_slot;
+			return (EEPROM_ERROR_NONE);
+		}
 
 		// Mark the current slot as invalid by clearing magic_nb
 		t_node invalid_node = {0};
@@ -120,75 +150,89 @@ uint8_t eeprom_relocate_node(t_node *node)
 	return (EEPROM_RELOCATION_FAILED);  // All slots failed
 }
 
-void	eeprom_hexdump(void)
+
+// void	eeprom_hexdump_slots(void)
+// {
+// 	uint8_t data;
+
+// 	for (uint8_t addr = 0; addr < g_slot_address_max ; addr += HEXDUMP_BYTES_PER_LINE)
+// 	{
+// 		// Display EEPROM Address / dec
+// 		uart_tx_dec_uint10(addr);
+// 		uart_tx(' ');
+// 		uart_tx('-');
+// 		uart_tx(' ');
+
+// 		// Display EEPROM Data / hex
+// 		for (uint8_t i = 0; i < HEXDUMP_BYTES_PER_LINE; i++)
+// 		{
+// 			eeprom_read_byte(addr + i, &data);
+// 			uart_tx_hex_uint8(data);
+// 			uart_tx(' ');
+// 		}
+// 		uart_tx('|');
+
+// 		// Display EEPROM Data / char
+// 		for (uint8_t i = 0; i < HEXDUMP_BYTES_PER_LINE; i++)
+// 		{
+// 			eeprom_read_byte(addr + i, &data);
+// 			if (data >= ' ' && data < 127)
+// 				uart_tx(data);
+// 			else
+// 				uart_tx('.');
+// 		}
+// 		uart_tx('|');
+// 		uart_tx('\r');
+// 		uart_tx('\n');
+// 	}
+// }
+
+void eeprom_hexdump_slots(void)
 {
 	uint8_t data;
-
-	for (uint16_t addr = 0; addr < EEPROM_SIZE ; addr += HEXDUMP_BYTES_PER_LINE)
+	const char *slot_colors[NUM_SLOTS] =
 	{
-		// Display EEPROM Address / dec
+		COLOR_CYAN,  // Slot 0: No color
+		COLOR_BLUE,   // Slot 1: Blue
+		COLOR_CYAN,  // Slot 2: No color
+		COLOR_BLUE    // Slot 3: Blue
+	};
+
+	for (uint8_t addr = 0; addr < g_slot_address_max; addr += HEXDUMP_BYTES_PER_LINE)
+	{
+		// Display EEPROM Address in decimal
 		uart_tx_dec_uint10(addr);
 		uart_tx(' ');
 		uart_tx('-');
 		uart_tx(' ');
 
-		// Display EEPROM Data / hex
+		uint8_t slot = 0;
+
+		// Display EEPROM Data in hex
 		for (uint8_t i = 0; i < HEXDUMP_BYTES_PER_LINE; i++)
 		{
-			eeprom_read_byte(addr + i, &data);
-			uart_tx_hex(data);
-			uart_tx(' ');
-		}
-		uart_tx('|');
+			uint8_t current_addr = addr + i;
 
-		// Display EEPROM Data / unsigned char
-		for (uint8_t i = 0; i < HEXDUMP_BYTES_PER_LINE; i++)
-		{
-			eeprom_read_byte(addr + i, &data);
-			if (data >= ' ' && data <= 127)
-				uart_tx(data);
-			else
-				uart_tx('.');
-		}
-		uart_tx('|');
-		uart_tx('\r');
-		uart_tx('\n');
-	}
-}
+			// Determine which slot the current address belongs to
+			while (slot < NUM_SLOTS && current_addr >= g_slot_addresses[slot + 1])
+				slot++;
 
-void	eeprom_hexdump_with_highlight(uint16_t highlight_addr)
-{
-	uint8_t data;
-
-	for (uint16_t addr = 0; addr < EEPROM_SIZE ; addr += HEXDUMP_BYTES_PER_LINE)
-	{
-		// Display EEPROM Address / dec
-		uart_tx_dec_uint10(addr);
-		uart_tx(' ');
-		uart_tx('-');
-		uart_tx(' ');
-
-		// Display EEPROM Data / hex
-		for (uint8_t i = 0; i < HEXDUMP_BYTES_PER_LINE; i++)
-		{
-			uint16_t current_addr = addr + i;
+			// Apply slot color
+			if (current_addr < g_slot_address_max)
+				uart_printstr(slot_colors[slot]);
 			eeprom_read_byte(current_addr, &data);
-			if (current_addr == highlight_addr)
-			{
-				uart_printstr("\033[31m");  // Start red
-				uart_tx_hex(data);
-				uart_printstr("\033[0m");  // Reset color
-			}
-			else
-				uart_tx_hex(data);
+			uart_tx_hex_uint8(data);
+			uart_tx(' ');
+			uart_printstr(COLOR_RESET); // Reset color after each byte
 		}
 		uart_tx('|');
 
-		// Display EEPROM Data / unsigned char
+		// Display EEPROM Data in ASCII
 		for (uint8_t i = 0; i < HEXDUMP_BYTES_PER_LINE; i++)
 		{
-			eeprom_read_byte(addr + i, &data);
-			if (data >= ' ' && data <= 127)
+			uint8_t current_addr = addr + i;
+			eeprom_read_byte(current_addr, &data);
+			if (data >= ' ' && data < 127)
 				uart_tx(data);
 			else
 				uart_tx('.');

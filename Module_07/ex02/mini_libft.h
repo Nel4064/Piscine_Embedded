@@ -3,13 +3,25 @@
 
 #include <avr/io.h>
 
-#define TRUE    ((uint8_t)0)
-#define FALSE   ((uint8_t)1)
-#define NULL    ((void *)0)
+#ifndef TRUE
+# define TRUE	((uint8_t)1)
+#endif
+
+#ifndef FALSE
+# define FALSE	((uint8_t)0)
+#endif
+
+#ifndef NULL
+# define NULL	((void *)0)
+#endif
+
+// !WARNING!
+// Most functions are assuming only uint8_t_MAX = 255 characters length!
 
 uint8_t ft_memcmp(const void *s1, const void *s2, uint8_t n);
-void    *ft_memcpy(void *dest, const void *src, uint8_t n);
-void    ft_toupper(char *str);
+void	*ft_memcpy(void *dest, const void *src, uint8_t n);
+void	*ft_memset(void *s, uint8_t c, uint8_t n);
+void	ft_toupper(char *str);
 uint8_t ft_strcmp(const char *s1, const char *s2);
 uint8_t ft_strlen(char *str);
 uint8_t is_empty_string(const char *str);
