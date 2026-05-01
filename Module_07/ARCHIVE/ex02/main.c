@@ -1,5 +1,6 @@
 #include <avr/io.h>
 #include "uart.h"
+#include "delay_us_and_ms.h"
 #include "eeprom_rw.h"
 #include "node_cmd.h"
 #include "parsing.h"
@@ -7,10 +8,6 @@
 
 #ifndef F_CPU
  #define F_CPU		16000000UL
-#endif
-
-#ifndef BUG_MODE_CORRUPT
-# define BUG_MODE_CORRUPT	0
 #endif
 
 const uint16_t g_slot_addresses[NUM_SLOTS] =
@@ -25,6 +22,23 @@ uint16_t	g_slot_address_max = g_slot_addresses[NUM_SLOTS - 1] + NODE_SIZE;
 t_node		g_current_node = {0};
 uint8_t		g_current_slot = 0;
 
+uint8_t find_valid_node(t_node *node)
+{
+	for (uint8_t i = 0; i < NUM_SLOTS; i++)
+	{
+		t_node current_node;
+		eeprom_read_block(g_slot_addresses[i], (uint8_t *)&current_node, NODE_SIZE);
+
+		if (is_node_valid(&current_node) == NODE_ERROR_NONE)
+		{
+			*node = current_node;
+			g_current_slot = i;
+			return (EEPROM_ERROR_NONE);
+		}
+	}
+	return (EEPROM_NO_VALID_SLOT);
+}
+
 int main(void)
 {
 	char		user_str[MAX_USER_STR_LENGTH];
@@ -34,6 +48,7 @@ int main(void)
 	uint8_t		eeprom_err;
 
 	uart_init();
+	// init_timer_for_delay();
 
 	if (find_valid_node(&g_current_node) != EEPROM_ERROR_NONE)
 		uart_printstr("No valid node.\r\n");
@@ -70,18 +85,6 @@ int main(void)
 			node_factory_reset(param);
 		else if (ft_strcmp(command, "HEXDUMP") == 0)
 			eeprom_hexdump_slots();
-		else if (BUG_MODE_CORRUPT != 0 && ft_strcmp(command, "CORRUPT_INTEGRITY") == 0)
-		{
-			uint16_t corruption_target_addr = g_slot_addresses[g_current_slot] + 0x002A;
-			if (corruption_target_addr < EEPROM_SIZE)
-				eeprom_write_byte(corruption_target_addr, 0xFF);
-		}
-		else if (BUG_MODE_CORRUPT != 0 && ft_strcmp(command, "CORRUPT_MAGIC") == 0)
-		{
-			uint16_t corruption_target_addr = g_slot_addresses[g_current_slot] + 0x0000;
-			if (corruption_target_addr < EEPROM_SIZE)
-				eeprom_write_byte(corruption_target_addr, 0xFF);
-		}
 		else
 			uart_printstr("Error: Unknown command.\r\n");
 	}

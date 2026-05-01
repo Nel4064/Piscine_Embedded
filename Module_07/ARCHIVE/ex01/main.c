@@ -257,7 +257,7 @@ int main(void)
 			eeprom_err = eeprom_write_byte(address, data);
 			eeprom_hexdump_with_highlight(address);
 		}
-		uart_printstr("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\r\n");
+		uart_printstr("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++\r\n");
 		delay_ms(2);
 	}
 }

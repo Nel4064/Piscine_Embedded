@@ -5,11 +5,7 @@ PROGRAMMER = arduino
 PORT = /dev/ttyUSB0
 
 SRC = main.c \
-		uart.c \
-		eeprom_rw.c \
-		node_cmd.c \
-		mini_libft.c \
-		parsing.c
+		uart.c
 
 OBJ = $(SRC:.c=.o)
 TARGET = main.bin
@@ -26,25 +22,11 @@ hex: $(OBJ)
 flash: main.hex
 	avrdude -c $(PROGRAMMER) -p $(MCU) -P $(PORT) -b $(BAUD_RATE) -U flash:w:main.hex:i
 
-dump:
-	avrdude -c $(PROGRAMMER) -p $(MCU) -P $(PORT) -b $(BAUD_RATE) -U flash:r:main.dump
-
 screen:
 	screen $(PORT) $(BAUD_RATE)
 
 clean:
-	rm -f *.hex *.bin *.o *.dump
-
-
-# For compiling with BUG_MODE_CORRUPT = 1
-# => enabling CORRUPT_MAGIC and CORRUPT_INTEGRITY commands
-# => forcing eeprom_write_node() to fail (%2)
-corrupt: clean
-	avr-gcc -mmcu=$(MCU) -DF_CPU=$(F_CPU) -DBUG_MODE_CORRUPT=1 -Os -I. -c $(SRC)
-	avr-gcc -mmcu=$(MCU) -DF_CPU=$(F_CPU) -DBUG_MODE_CORRUPT=1 -Os -o $(TARGET) $(OBJ)
-	avr-objcopy -O ihex main.bin main.hex
-	make flash
-	make screen
+	rm -f *.hex *.bin *.o
 
 .PHONY: all hex flash clean screen
 

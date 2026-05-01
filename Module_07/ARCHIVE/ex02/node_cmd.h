@@ -7,8 +7,7 @@
 #include "eeprom_rw.h"
 
 uint16_t	add_checksum_16(const uint8_t *data, uint16_t len);
-uint8_t		is_node_valid(uint16_t eeprom_address, const t_node *node);
-uint8_t		find_valid_node(t_node *node);
+uint8_t		is_node_valid(const t_node *node);
 uint8_t		is_tag_valid(const char *tag);
 void		node_status(char *param);
 void		node_set_id(char *param);

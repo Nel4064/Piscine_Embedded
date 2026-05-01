@@ -1,5 +1,5 @@
 #ifndef NODE_H
-# define NODE_H
+#define NODE_H
 
 #define MAX_TAG_STR_LENGTH	((uint8_t)32)
 #define NODE_MAGIC_NUMBER	((uint16_t)0x4242) // Arbitrary choice

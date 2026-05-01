@@ -27,20 +27,6 @@ uint8_t eeprom_read_byte(uint16_t address, uint8_t *data)
 	return (EEPROM_ERROR_NONE);
 }
 
-void	eeprom_read_block(uint16_t address, uint8_t *data, uint16_t len)
-{
-	for (uint16_t i = 0; i < len; i++)
-		eeprom_read_byte(address + i, &data[i]);
-}
-
-uint8_t	eeprom_read_node(uint16_t address, const t_node *node)
-{
-	if (address >= EEPROM_SIZE || (address + NODE_SIZE) > EEPROM_SIZE)
-		return (EEPROM_INVALID_ADDR);
-	
-	eeprom_read_block(address, (uint8_t *)node, NODE_SIZE);
-}
-
 // DS40002061B-p.34 / Example EEPROM_write
 uint8_t eeprom_write_byte(uint16_t address, uint8_t data)
 {
@@ -87,65 +73,58 @@ uint8_t eeprom_write_byte(uint16_t address, uint8_t data)
 	return (EEPROM_ERROR_NONE);
 }
 
+void	eeprom_read_block(uint16_t address, uint8_t *data, uint16_t len)
+{
+	for (uint16_t i = 0; i < len; i++)
+		eeprom_read_byte(address + i, &data[i]);
+}
+
 void	eeprom_write_block(uint16_t address, const uint8_t *data, uint16_t len)
 {
 	for (uint16_t i = 0; i < len; i++)
-	eeprom_write_byte(address + i, data[i]);
+		eeprom_write_byte(address + i, data[i]);
+}
+
+bool	eeprom_node_structs_equal(const t_node *node1, const t_node *node2)
+{
+	return (ft_memcmp(node1, node2, sizeof(t_node)) == 0);
 }
 
 uint8_t eeprom_write_node(uint16_t address, const t_node *node)
 {
-	// HOOK: Simulate recurrent failures
-	#ifdef BUG_MODE_CORRUPT
-	# if BUG_MODE_CORRUPT != 0 
-			static uint8_t write_attempts = 0;
-			if (write_attempts == 1 || write_attempts == 2)
-			{
-				write_attempts++;
-				return (EEPROM_WRITE_VERIFY_FAILED);
-			}
-			write_attempts = (write_attempts + 1) % 4; // n attempt
-	# endif
-	#endif
-	// END HOOK
-
 	if (address >= EEPROM_SIZE || (address + NODE_SIZE) > EEPROM_SIZE)
 		return (EEPROM_INVALID_ADDR);
-	
+
 	t_node	current_node;
 	eeprom_read_block(address, (uint8_t *)&current_node, NODE_SIZE);
-	
+
 	// If the current node is uninitialized, treat it as a new node
 	if (current_node.magic_nb != NODE_MAGIC_NUMBER)
 	{
+		// No need to compare or verify, just write the new node
 		eeprom_write_block(address, (uint8_t *)node, NODE_SIZE);
-		
+
+		// Verify the write
 		t_node verify_node;
 		eeprom_read_block(address, (uint8_t *)&verify_node, NODE_SIZE);
-
 		if (!eeprom_node_structs_equal(node, &verify_node))
 			return (EEPROM_WRITE_VERIFY_FAILED);
-		
+
 		return (EEPROM_ERROR_NONE);
 	}
-	
+
 	if (eeprom_node_structs_equal(node, &current_node))
 		return (EEPROM_DATA_ALREADY_IN);
-	
+
 	eeprom_write_block(address, (uint8_t *)node, NODE_SIZE);
-	
+
 	t_node verify_node;
 	eeprom_read_block(address, (uint8_t *)&verify_node, NODE_SIZE);
-	
+
 	if (!eeprom_node_structs_equal(node, &verify_node))
 		return (EEPROM_WRITE_VERIFY_FAILED);
-	
-	return (EEPROM_ERROR_NONE);
-}
 
-uint8_t eeprom_node_structs_equal(const t_node *node1, const t_node *node2)
-{
-	return (ft_memcmp(node1, node2, sizeof(t_node)) == 0);
+	return (EEPROM_ERROR_NONE);
 }
 
 uint8_t eeprom_relocate_node(t_node *node)
@@ -162,22 +141,62 @@ uint8_t eeprom_relocate_node(t_node *node)
 			return (EEPROM_ERROR_NONE);
 		}
 
-		// Invalidate current slot (=> clearing magic number only)
-		t_node modified_node = g_current_node;
-		modified_node.magic_nb = 0x00;
-
-		// // Clear current slot
-		// t_node modified_node = {0}; // ft_memset(&empty_node, 0, NODE_SIZE)
-		eeprom_write_node(g_slot_addresses[current_slot], &modified_node);
+		// Mark the current slot as invalid by clearing magic_nb
+		t_node invalid_node = {0};
+		eeprom_write_block(g_slot_addresses[current_slot], (uint8_t *)&invalid_node, NODE_SIZE);
 
 		current_slot = (current_slot + 1) % NUM_SLOTS;
 	}
 	return (EEPROM_RELOCATION_FAILED);  // All slots failed
 }
 
+
+// void	eeprom_hexdump_slots(void)
+// {
+// 	uint8_t data;
+
+// 	for (uint8_t addr = 0; addr < g_slot_address_max ; addr += HEXDUMP_BYTES_PER_LINE)
+// 	{
+// 		// Display EEPROM Address / dec
+// 		uart_tx_dec_uint10(addr);
+// 		uart_tx(' ');
+// 		uart_tx('-');
+// 		uart_tx(' ');
+
+// 		// Display EEPROM Data / hex
+// 		for (uint8_t i = 0; i < HEXDUMP_BYTES_PER_LINE; i++)
+// 		{
+// 			eeprom_read_byte(addr + i, &data);
+// 			uart_tx_hex_uint8(data);
+// 			uart_tx(' ');
+// 		}
+// 		uart_tx('|');
+
+// 		// Display EEPROM Data / char
+// 		for (uint8_t i = 0; i < HEXDUMP_BYTES_PER_LINE; i++)
+// 		{
+// 			eeprom_read_byte(addr + i, &data);
+// 			if (data >= ' ' && data < 127)
+// 				uart_tx(data);
+// 			else
+// 				uart_tx('.');
+// 		}
+// 		uart_tx('|');
+// 		uart_tx('\r');
+// 		uart_tx('\n');
+// 	}
+// }
+
 void eeprom_hexdump_slots(void)
 {
 	uint8_t data;
+	const char *slot_colors[NUM_SLOTS] =
+	{
+		COLOR_CYAN,  // Slot 0: No color
+		COLOR_BLUE,   // Slot 1: Blue
+		COLOR_CYAN,  // Slot 2: No color
+		COLOR_BLUE    // Slot 3: Blue
+	};
 
 	for (uint8_t addr = 0; addr < g_slot_address_max; addr += HEXDUMP_BYTES_PER_LINE)
 	{
@@ -200,12 +219,11 @@ void eeprom_hexdump_slots(void)
 
 			// Apply slot color
 			if (current_addr < g_slot_address_max)
-				uart_printstr(slot % 2 == 0 ? COLOR_CYAN : COLOR_BLUE);
+				uart_printstr(slot_colors[slot]);
 			eeprom_read_byte(current_addr, &data);
 			uart_tx_hex_uint8(data);
 			uart_tx(' ');
-			// Reset color after each byte
-			uart_printstr(COLOR_RESET);
+			uart_printstr(COLOR_RESET); // Reset color after each byte
 		}
 		uart_tx('|');
 

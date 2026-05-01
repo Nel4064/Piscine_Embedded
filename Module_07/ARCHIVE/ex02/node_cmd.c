@@ -10,10 +10,6 @@ uint16_t	add_checksum_16(const uint8_t *data, uint16_t len)
 
 uint8_t	is_node_valid(uint16_t eeprom_address, const t_node *node)
 {
-	uart_printstr("Slot address: 0x");
-	uart_tx_hex_uint16(eeprom_address);
-	uart_printstr(". ");
-
 	if (node->magic_nb != NODE_MAGIC_NUMBER)
 	{
 		uart_printstr("Magic number do not match.\r\n");
@@ -27,27 +23,7 @@ uint8_t	is_node_valid(uint16_t eeprom_address, const t_node *node)
 		uart_printstr("Integrity check failed.\r\n");
 		return (INTEGRITY_CHECK_FAILED);
 	}
-
-	uart_printstr("Valid node.\r\n");
 	return (NODE_ERROR_NONE);
-}
-
-uint8_t find_valid_node(t_node *node)
-{
-	for (uint8_t i = 0; i < NUM_SLOTS; i++)
-	{
-		eeprom_read_node(g_slot_addresses[i], node);
-
-		uint8_t validation_result = is_node_valid(g_slot_addresses[i], node);
-		if (validation_result == NODE_ERROR_NONE)
-		{
-			g_current_slot = i;
-			return (EEPROM_ERROR_NONE);
-		}
-		else if (validation_result == INTEGRITY_CHECK_FAILED)
-			return (INTEGRITY_CHECK_FAILED);
-	}
-	return (EEPROM_NO_VALID_SLOT);
 }
 
 uint8_t	is_tag_valid(const char *tag)
@@ -78,28 +54,34 @@ void node_status(char *param)
 		return ;
 	}
 
-	uint8_t result = find_valid_node(&g_current_node);
-
-	if (result == EEPROM_NO_VALID_SLOT)
-		uart_printstr("Node unconfigured\r\n");
-	else if (result == INTEGRITY_CHECK_FAILED)
-		uart_printstr("CRITICAL: Data corruption detected!\r\n");
-	else if (result == EEPROM_ERROR_NONE)
+	if (g_current_node.magic_nb != NODE_MAGIC_NUMBER)
 	{
-		uart_printstr(COLOR_GREEN);
-		uart_printstr("- Node ID: ");
-		uart_tx_dec_uint32(g_current_node.node_id);
-		uart_printstr("\r\n- Priority: ");
-		uart_tx_dec_int16(g_current_node.priority);
-		uart_printstr("\r\n- Slot address: 0x");
-		uart_tx_hex_uint16(g_slot_addresses[g_current_slot]);
-		uart_printstr(" / Slot nb: ");
-		uart_tx_dec_int16(g_current_slot);
-		uart_printstr("\r\n- Tag: \"");
-		uart_printstr(g_current_node.tag);
-		uart_printstr("\"\r\n");
-		uart_printstr(COLOR_RESET);
+		uart_printstr("Node unconfigured\r\n");
+		return ;
 	}
+
+	uint16_t calculated_check
+		= add_checksum_16((uint8_t *)&g_current_node, sizeof(t_node) - 2);
+
+	if (calculated_check != g_current_node.integrity_check)
+	{
+		uart_printstr("CRITICAL: Data corruption detected!\r\n");
+		return ;
+	}
+
+	uart_printstr("\033[32m");  // Start red
+	uart_printstr("- Node ID: ");
+	uart_tx_dec_uint32(g_current_node.node_id);
+	uart_printstr("\r\n- Priority: ");
+	uart_tx_dec_int16(g_current_node.priority);
+	uart_printstr("\r\n- Slot address : 0x");
+	uart_tx_hex_uint16(g_slot_addresses[g_current_slot]);
+	uart_printstr(" / Slot nb : ");
+	uart_tx_dec_int16(g_current_slot);
+	uart_printstr("\r\n- Tag: \"");
+	uart_printstr(g_current_node.tag);
+	uart_printstr("\"\r\n");
+	uart_printstr("\033[0m");  // Reset color
 }
 
 void node_set_id(char *param)
@@ -118,9 +100,6 @@ void node_set_id(char *param)
 		return ;
 	}
 
-	// Read the latest node data from EEPROM
-	eeprom_read_node(g_slot_addresses[g_current_slot], &g_current_node);
-
 	g_current_node.node_id = new_id;
 
 	g_current_node.magic_nb = NODE_MAGIC_NUMBER;
@@ -128,7 +107,7 @@ void node_set_id(char *param)
 	g_current_node.integrity_check
 		= add_checksum_16((uint8_t *)&g_current_node, sizeof(t_node) - 2);
 
-	if (eeprom_write_node(g_slot_addresses[g_current_slot], &g_current_node) == EEPROM_WRITE_VERIFY_FAILED)
+	if (eeprom_write_node(g_slot_addresses[g_current_slot], &g_current_node) != EEPROM_ERROR_NONE)
 	{
 		uart_printstr("Corruption detected.\r\n");
 		if (eeprom_relocate_node(&g_current_node) == EEPROM_ERROR_NONE)
@@ -136,7 +115,6 @@ void node_set_id(char *param)
 		else
 		{
 			uart_printstr("Relocation failed.\r\n");
-			uart_printstr("CRITICAL EEPROM FAILURE\r\n");
 			return ;
 		}
 	}
@@ -160,9 +138,6 @@ void node_set_prio(char *param)
 		return ;
 	}
 
-	// Read the latest node data from EEPROM
-	eeprom_read_node(g_slot_addresses[g_current_slot], &g_current_node);
-
 	g_current_node.priority = new_prio;
 
 	g_current_node.magic_nb = NODE_MAGIC_NUMBER;
@@ -170,7 +145,7 @@ void node_set_prio(char *param)
 	g_current_node.integrity_check
 		= add_checksum_16((uint8_t *)&g_current_node, sizeof(t_node) - 2);
 
-	if (eeprom_write_node(g_slot_addresses[g_current_slot], &g_current_node) == EEPROM_WRITE_VERIFY_FAILED)
+	if (eeprom_write_node(g_slot_addresses[g_current_slot], &g_current_node) != EEPROM_ERROR_NONE)
 	{
 		uart_printstr("Corruption detected.\r\n");
 		if (eeprom_relocate_node(&g_current_node) == EEPROM_ERROR_NONE)
@@ -178,7 +153,6 @@ void node_set_prio(char *param)
 		else
 		{
 			uart_printstr("Relocation failed.\r\n");
-			uart_printstr("CRITICAL EEPROM FAILURE\r\n");
 			return ;
 		}
 	}
@@ -213,9 +187,6 @@ void node_set_tag(char *param)
 		return ;
 	}
 
-	// Read the latest node data from EEPROM
-	eeprom_read_node(g_slot_addresses[g_current_slot], &g_current_node);
-
 	uint8_t i = 0;
 	while (i < MAX_TAG_STR_LENGTH && param[i] != '\0')
 	{
@@ -229,7 +200,7 @@ void node_set_tag(char *param)
 	g_current_node.integrity_check
 		= add_checksum_16((uint8_t *)&g_current_node, sizeof(t_node) - 2);
 
-	if (eeprom_write_node(g_slot_addresses[g_current_slot], &g_current_node) == EEPROM_WRITE_VERIFY_FAILED)
+	if (eeprom_write_node(g_slot_addresses[g_current_slot], &g_current_node) != EEPROM_ERROR_NONE)
 	{
 		uart_printstr("Corruption detected.\r\n");
 		if (eeprom_relocate_node(&g_current_node) == EEPROM_ERROR_NONE)
@@ -237,7 +208,6 @@ void node_set_tag(char *param)
 		else
 		{
 			uart_printstr("Relocation failed.\r\n");
-			uart_printstr("CRITICAL EEPROM FAILURE\r\n");
 			return ;
 		}
 	}
@@ -253,22 +223,15 @@ void node_factory_reset(char *param)
 		return ;
 	}
 
-	// Read the latest node data from EEPROM
-	eeprom_read_node(g_slot_addresses[g_current_slot], &g_current_node);
-
-	// Invalidate current slot (=> clearing magic number only)
-	t_node modified_node = g_current_node;
-	modified_node.magic_nb = 0x00;
-
-	// // Clear current slot
-	// t_node modified_node = {0}; // ft_memset(&empty_node, 0, NODE_SIZE)
-
-	g_current_node = modified_node;
-	if (eeprom_write_node(g_slot_addresses[g_current_slot], &g_current_node) == EEPROM_WRITE_VERIFY_FAILED)
+	// Invalidate current slot (=> clearing magic number at minimum)
+	t_node empty_node = {0}; // ft_memset(&empty_node, 0, NODE_SIZE)
+	if (eeprom_write_node(g_slot_addresses[g_current_slot], &empty_node) != EEPROM_ERROR_NONE)
 	{
 		uart_printstr("CRITICAL EEPROM FAILURE\r\n");
 		return ;
 	}
+
+	ft_memset(&g_current_node, 0, NODE_SIZE);
 
 	uart_printstr("Factory reset completed.\r\n");
 }
