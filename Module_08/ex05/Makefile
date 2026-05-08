@@ -12,7 +12,7 @@ SRC = main.c \
 OBJ = $(SRC:.c=.o)
 TARGET = main.bin
 
-all: hex flash screen
+all: hex flash
 
 hex: $(OBJ)
 	avr-gcc -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os -o $(TARGET) $(OBJ)

@@ -2,10 +2,20 @@
 #include <util/delay.h>
 #include "uart.h"
 #include "adv.h"
+#include "mini_libft.h"
 
 #ifndef F_CPU
  #define F_CPU		16000000UL
 #endif
+
+#define MAX_STR_LENGTH	20 // Min. MAX_RGB_LENGHT + "Dx" (i.e. =2) + '\0' (i.e. = 1)  + whatever we want
+#define MAX_RGB_LENGTH	6
+#define TRUE  		((uint8_t)1)
+#define FALSE 		((uint8_t)0)
+
+#define STANDARD	0
+#define RAINBOW		1
+#define INVALID		2
 
 // DS40002061B-p.171 / Suggested naming from example
 #define SS			PORTB2	// SPI SS (Slave Select) Pin
@@ -20,14 +30,23 @@
 #define STOP_FRAME	0xFFFFFFFF
 
 #define BRIGHTNESS	0xE1000000
-#define RED     0x000000FF
-#define GREEN   0x0000FF00
-#define BLUE    0x00FF0000
+#define RED		0x000000FF
+#define GREEN	0x0000FF00
+#define BLUE	0x00FF0000
 #define BLANK	0x00000000
 #define YELLOW	(RED | GREEN)
 #define CYAN	(GREEN | BLUE)
 #define MAGENTA	(RED | BLUE)
 #define WHITE	(RED | GREEN | BLUE)
+
+// ANSI color codes
+#define ANSI_RESET			"\033[0m"
+#define ANSI_RED			"\033[31m"
+#define ANSI_GREEN			"\033[32m"
+#define ANSI_YELLOW			"\033[33m"
+#define ANSI_BLUE			"\033[34m"
+#define ANSI_PURPLE			"\033[35m"
+#define ANSI_CYAN			"\033[36m"
 
 // DS40002061B-p.172 / Example 
 void	spi_master_init(void)
@@ -76,30 +95,197 @@ void	spi_tx_uint32(uint32_t data)
 	spi_master_transmit((uint8_t)((data & 0x000000FF) >> 0));  // Byte 0 (LSB)
 }
 
-// DS40002061B-p.74 Interrupt Vectors = ISR name
-__attribute__((signal, used))
-void	ADC_vect()
+uint8_t hex_char_to_val(char c)
 {
-	uint8_t	nbr = ADCH; // DS40002061B-page 259
-
-	TIFR1 |= (1 << OCF1B); // DS40002061B-page 145 Clear OCF1B flag
-	// => OCF1B is "not" automatically cleared when the Output Compare Match B Interrupt Vector is "not" executed. Alternatively, OCF1B can be cleared by writing a logic one to its bit location.
-
-	spi_tx_uint32(START_FRAME);
-	spi_tx_uint32((nbr >= 255/3) ? (BRIGHTNESS | CYAN) : (BRIGHTNESS | BLANK)); // D6
-	spi_tx_uint32((nbr >= 255/3*2) ? (BRIGHTNESS | CYAN) : (BRIGHTNESS | BLANK)); // D7
-	spi_tx_uint32((nbr >= 255) ? (BRIGHTNESS | CYAN) : (BRIGHTNESS | BLANK)); // D8
-	spi_tx_uint32(STOP_FRAME);
+	if (c >= '0' && c <= '9') return c - '0';
+	if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+	if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+	return (0);
 }
+
+uint8_t get_and_test_str(char* str, uint32_t* r, uint32_t* g, uint32_t* b, uint8_t* led_id)
+{
+	char c;
+	uint8_t i = 0;
+	uint8_t is_color_hex = FALSE;
+	uint8_t is_led_id_valid = FALSE;
+
+	while (i < MAX_STR_LENGTH - 1)
+	{
+		c = uart_rx();
+		if (c == 127) // if = DEL (backspace)
+		{
+			if (i > 0)
+			{
+				uart_printstr("\b \b");
+				i--;
+			}
+			continue ;
+		}
+		if (c == '\r')
+			break ;
+		str[i] = c;
+		uart_tx(c);
+		i++;
+	}
+	str[i] = '\0';
+	uart_printstr("\r\n");
+
+	if (ft_strcmp(str, "#FULLRAINBOW") == 0 || ft_strcmp(str, "R") == 0)
+		return(RAINBOW);
+
+	if (str[0] == '#' && i <= MAX_STR_LENGTH - 1) // '#' + 6 hex digits
+	{
+		is_color_hex = TRUE;
+		for (uint8_t j = 1; j <= MAX_RGB_LENGTH; j++)
+		{
+			if (!((str[j] >= '0' && str[j] <= '9') ||
+				  (str[j] >= 'a' && str[j] <= 'f') ||
+				  (str[j] >= 'A' && str[j] <= 'F')))
+			{
+				is_color_hex = FALSE;
+				break;
+			}
+		}
+	}
+
+	if (i <= (MAX_STR_LENGTH - 1)
+			&& (str[MAX_RGB_LENGTH + 1] == 'D') || str[MAX_RGB_LENGTH + 1] == 'd')
+	{
+		is_led_id_valid = TRUE;
+		switch(str[MAX_RGB_LENGTH + 2])
+		{
+			case '6':	*led_id = 6; break;
+			case '7':	*led_id = 7; break;
+			case '8':	*led_id = 8; break;
+			default:	is_led_id_valid = FALSE;
+		}
+	}
+
+	if (i == (MAX_STR_LENGTH - 1))
+	{
+		uart_printstr(ANSI_RED);
+		uart_printstr("Max length reached! Invalid input. Press Enter to retry.\r\n");
+		uart_printstr(ANSI_RESET);
+	}
+
+	// Consume extra characters
+	if (i == (MAX_STR_LENGTH - 1))
+	{
+		while (1)
+		{
+			if (c == '\r')
+				break;
+			c = uart_rx();
+		}
+	}
+
+	if (is_color_hex == FALSE || is_led_id_valid == FALSE || i != 9) // '#' + 6 hex digits + Dx + \0
+	{
+		uart_printstr(ANSI_RED);
+		uart_printstr("Invalid request!\r\n");
+		uart_printstr(ANSI_RESET);
+		return (INVALID);
+	}
+
+	// Parse the RGB hex value
+	uint32_t rgb = 0;
+	for (uint8_t j = 1; j <= 6; j++)
+		rgb = (rgb << 4) | hex_char_to_val(str[j]);
+	*b = (rgb >> 16) & 0xFF;
+	*g = (rgb >> 8) & 0xFF;
+	*r = (rgb >> 0) & 0xFF;
+
+	return (STANDARD);
+}
+
+uint32_t	wheel(uint8_t pos)
+{
+	uint32_t	r, g, b;
+
+	pos = 255 - pos;
+	if (pos < 85)
+	{
+		r = 255 - pos * 3;
+		g = 0;
+		b = pos * 3;
+	}
+	else if (pos < 170)
+	{
+		pos = pos - 85;
+		r = 0;
+		g = pos * 3;
+		b = 255 - pos * 3;
+	}
+	else
+	{
+		pos = pos - 170;
+		r = pos * 3;
+		g = 255 - pos * 3;
+		b = 0;
+	}
+
+	r = (r << 0)  & 0x000000FF;
+	g = (g << 8)  & 0x0000FF00;
+	b = (b << 16) & 0x00FF0000;
+	uint32_t color = BRIGHTNESS | r | g | b;
+	return (color);
+}
+
 
 int main(void)
 {
+	char		color_str[MAX_STR_LENGTH];
+	uint8_t		led_id;
+	uint8_t		usr_request;
+	uint32_t	color;
+	uint32_t	r, g, b;
+
 	uart_init();
 	spi_master_init();
-	init_timer1(); // for ADC auto-trigger every 20ms on MUX = ADC0 => RV1
-	init_adc();
-	SREG |= (1 << 7); // DS40002061B-p.20 / Global Interrupt Enable on SREG Status Register / = sei() from <avr/interrupt.h>
-	while (1);
+	while (1)
+	{
+		uart_printstr("Type color code and led ID (format #RRGGBBDX, with RRGGBB in hex. value and X = 6/7/8) and press Enter.\r\n");
+		uart_printstr(" > ");
+		usr_request = get_and_test_str(color_str, &r, &g, &b, &led_id);
+		if (usr_request == STANDARD)
+		{
+			color = BRIGHTNESS | (r << 16) | (g << 8) | (b << 0);
+			spi_tx_uint32(START_FRAME);
+			for (uint8_t led = 6; led <= 8; led++)
+			{
+				if (led == led_id)
+					spi_tx_uint32(color);
+				else
+					spi_tx_uint32(BRIGHTNESS | BLANK);
+			}
+			spi_tx_uint32(STOP_FRAME);
+
+			uart_printstr(ANSI_GREEN);
+			uart_printstr("Color applied!\r\n");
+			uart_printstr(ANSI_RESET);
+		}
+		else if (usr_request == RAINBOW)
+		{
+			uart_printstr(ANSI_PURPLE);
+			uart_printstr("Rainbow mode activated! Enjoy and wait completion.\r\n");
+			uart_printstr(ANSI_RESET);
+			for (uint8_t cycle = 0; cycle < 4; cycle++)
+			{
+				for (uint8_t pos = 0; pos < 255; pos++)
+				{
+					color = wheel(pos);
+					spi_tx_uint32(START_FRAME);
+					spi_tx_uint32(color); // D6
+					spi_tx_uint32(color); // D7
+					spi_tx_uint32(color); // D8
+					spi_tx_uint32(STOP_FRAME);
+					_delay_ms(10);
+				}
+			}
+		}
+		uart_printstr("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\r\n");
+	}
 }
 
 
